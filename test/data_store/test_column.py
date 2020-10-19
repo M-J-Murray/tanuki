@@ -1,7 +1,7 @@
 from hamcrest import assert_that, equal_to, is_in
 from pytest import fail
 
-from src.data.data_store.column import Column
+from src.data_store.column import Column
 
 from _thread import start_new_thread
 

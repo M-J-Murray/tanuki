@@ -41,17 +41,6 @@ class Column(Generic[T], Series):
     def dtype(self: "Column") -> type:
         return type(self.values[0])
 
-    # @classmethod
-    # def sql_def(cls: type["Column"]) -> str:
-    #     entries = []
-    #     for arg in cls._data_type:
-    #         if type(arg) is not DataType:
-    #             raise TypeError("Column types must only be data type")
-    #         data_type = cast(DataType, arg)
-    #         entries.append(data_type.sql_def())
-    #     return " ".join(entries)
-
-
 class ColumnAlias:
     _name: Optional[str]
     __origin__: type = Column

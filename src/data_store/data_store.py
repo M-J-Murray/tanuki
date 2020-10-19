@@ -4,8 +4,11 @@ from pandas import DataFrame
 
 from src.data_store.column import Column, ColumnAlias
 
+from typing import Generic, TypeVar
 
-class DataStore:
+T = TypeVar('T', bound="DataStore")
+
+class DataStore(Generic[T]):
     data_frame: DataFrame
 
     def __init_subclass__(cls) -> None:
@@ -21,14 +24,7 @@ class DataStore:
         self._attach_columns()
 
     @classmethod
-    def sql_def(cls) -> str:
-        entries = ["id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT"]
-        for name, col in cls.columns().items():
-            entries.append(f"{name} {col.sql_def()}")
-        return "\n".join(entries)
-
-    @classmethod
-    def columns(cls) -> dict[str, Column]:
+    def columns(cls) -> dict[str, ColumnAlias]:
         variables = get_type_hints(cls)
         columns: dict[str, Column] = {}
         missing_types = []
@@ -38,7 +34,9 @@ class DataStore:
             elif type(col) is ColumnAlias:
                 columns[name] = col
         if len(missing_types) > 0:
-            raise TypeError(f"Failed to find column types for the following columns: {missing_types}")
+            raise TypeError(
+                f"Failed to find column types for the following columns: {missing_types}"
+            )
         return columns
 
     def _validate_data_frame(self) -> None:
@@ -46,17 +44,20 @@ class DataStore:
 
         missing_cols = []
         invalid_types = []
-        for col in columns:
-            if col not in self.data_frame:
-                missing_cols.append(col)
-            data = columns[col]
-            if col._data_type != data._data_type:
-                invalid_types.append(col._name)
+        for name, col in columns.items():
+            if name not in self.data_frame:
+                missing_cols.append(name)
+            data = self.data_frame[name]
+            if Column.needs_cast(type(data[0]), col.__args__[0]):
+                invalid_types.append(name)
 
+        errors = []
         if len(missing_cols) != 0:
-            raise ValueError(
-                f"The following columns were missing from the data frame: {missing_cols}"
-            )
+            errors.append(f"Column data was missing for: {missing_cols}")
+        if len(invalid_types) != 0:
+            errors.append(f"Invalid types provided for: {invalid_types}")
+        if len(errors) != 0:
+            raise ValueError("\n".join(errors))
 
     def _attach_columns(self) -> None:
         columns = self.columns()
@@ -65,6 +66,9 @@ class DataStore:
                 setattr(self, col, self.data_frame[col])
             else:
                 setattr(self, col, None)
+
+    def reset_index(drop: bool = False) -> T:
+        pass
 
     def __contains__(self, key):
         if type(key) is str:
