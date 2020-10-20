@@ -1,14 +1,15 @@
-from typing import cast, get_args, get_type_hints
+from src.data_store.data_type import DataType
+from typing import cast, get_args, get_type_hints, Optional, TypeVar
 
 from pandas import DataFrame
+from pandas.core.arrays.sparse import dtype
 
 from src.data_store.column import Column, ColumnAlias
 
-from typing import Generic, TypeVar
+T = TypeVar("T", bound="DataStore")
 
-T = TypeVar('T', bound="DataStore")
 
-class DataStore(Generic[T]):
+class DataStore:
     data_frame: DataFrame
 
     def __init_subclass__(cls) -> None:
@@ -17,11 +18,14 @@ class DataStore(Generic[T]):
             col._name = name
             setattr(cls, name, col)
 
-    def __init__(self, column_data: dict[str, Column]) -> None:
-        column_data = {str(name): col for name, col in column_data.items()}
-        self.data_frame = DataFrame(column_data)
-        self._validate_data_frame()
-        self._attach_columns()
+    def __init__(self, column_data: Optional[dict[str, Column]] = None) -> None:
+        if column_data:
+            column_data = {str(name): col for name, col in column_data.items()}
+            self.data_frame = DataFrame(column_data)
+            self._validate_data_frame()
+            self._attach_columns()
+        else:
+            self.data_frame = DataFrame()
 
     @classmethod
     def columns(cls) -> dict[str, ColumnAlias]:
@@ -47,8 +51,8 @@ class DataStore(Generic[T]):
         for name, col in columns.items():
             if name not in self.data_frame:
                 missing_cols.append(name)
-            data = self.data_frame[name]
-            if Column.needs_cast(type(data[0]), col.__args__[0]):
+            data = Column(self.data_frame[name])
+            if data.dtype != col.dtype:
                 invalid_types.append(name)
 
         errors = []
@@ -67,8 +71,15 @@ class DataStore(Generic[T]):
             else:
                 setattr(self, col, None)
 
-    def reset_index(drop: bool = False) -> T:
-        pass
+    @classmethod
+    def _new_data_copy(cls: type[T], data_frame: DataFrame) -> T:
+        instance: T = cls()
+        instance.data_frame = data_frame
+        instance._attach_columns()
+        return instance
+
+    def reset_index(self: T, drop: bool = True) -> T:
+        return self._new_data_copy(self.data_frame.reset_index(drop=drop))
 
     def __contains__(self, key):
         if type(key) is str:
@@ -77,7 +88,7 @@ class DataStore(Generic[T]):
             return len(self.data_frame.merge(key)) == len(self.data_frame)
 
     def __eq__(self, other):
-        if type(other) is not self.__class__:
+        if type(other) is not type(self):
             return False
         oc = cast(DataStore, other)
         return self.data_frame.equals(oc.data_frame)
@@ -86,17 +97,23 @@ class DataStore(Generic[T]):
         return len(self.data_frame)
 
     def __iter__(self):
-        for i in range(len(self)):
-            yield tuple(self.data_frame.iloc[i])
+        return iter(self.data_frame)
 
-    def __getitem__(self, item):
-        if type(item) is str or type(item) is list and get_args(item)[0] is str:
-            return type(self)(self.data_frame[item])
+    def __getitem__(self, item: str) -> Column:
+        return self.columns()[item](self.data_frame[item])
+
+    def __str__(self: "DataStore") -> str:
+        """TODO!"""
+        if len(self.data_frame) == 0:
+            return (
+                f"Empty {self.__class__.__name__}"
+            )
         else:
-            return type(self)(self.data_frame.iloc[item])
+            return (
+                f"{self.__class__.__name__}n{self.data_frame}"
+            )
 
-    def __str__(self) -> str:
-        return str(self.data_frame)
+    def __repr__(self: "DataStore") -> str:
+        """TODO!"""
+        return str(self)
 
-    def __repr__(self) -> str:
-        return repr(self.data_frame)

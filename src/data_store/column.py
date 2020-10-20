@@ -1,59 +1,139 @@
-from typing import Generic, Type, TypeVar, Optional
+from src.data_store.data_type import DataType, Object
+from typing import (
+    Any,
+    Generic,
+    Iterator,
+    Type,
+    TypeVar,
+    Optional,
+    Union,
+    cast,
+)
 
 import numpy as np
-from pandas import Series
+from pandas import Series, Index
 
 
 T = TypeVar("T")
+NT = TypeVar("NT")
+Indexible = Union[any, list[any]]
 
 
-class Column(Generic[T], Series):
-    _data_type: T
+class Column(Generic[T]):
+    series: Series
+    dtype: DataType
 
     @classmethod
-    def __class_getitem__(_, data_type: type) -> Type["Column"]:
-        return ColumnAlias(data_type)
+    def __class_getitem__(_, dtype: type) -> Type["Column"]:
+        return ColumnAlias(dtype)
 
-    @staticmethod
-    def needs_cast(dtype: type, arg_type: type) -> bool:
-        if arg_type == float and dtype == np.float64:
-            return False
-        if arg_type == int and dtype == np.int64:
-            return False
-        if arg_type == bool and dtype == np.bool_:
-            return False
-        return dtype != arg_type
+    def __init__(
+        self: "Column[T]", data: Optional[list[T]] = None, dtype: Optional[T] = None
+    ) -> None:
+        if data is not None:
+            self.series = Series(data)
+        else:
+            self.series = Series(dtype="object")
 
-    def __init__(self: "Column", data: list[T], data_type: Optional[T] = None) -> None:
-        super(Column, self).__init__(data)
-        self._data_type = data_type
-        if data_type is not None and self.needs_cast(self.dtype, data_type):
+        self.dtype = (
+            self._series_dtype()
+            if dtype is None
+            else DataType(dtype)
+        )
+
+        if data is not None:
+            self._validate_column()
+
+    def _series_dtype(self: "Column[T]") -> DataType:
+        dtype: type
+        if self.series.dtype == np.object:
+            if len(self.series) == 0:
+                dtype = Object
+            else:
+                dtype = type(next(iter(self.series)))
+        else:
+            dtype = self.series.dtype
+        return DataType(dtype)
+
+    def _validate_column(self: "Column[T]") -> None:
+        if self.dtype is not self._series_dtype():
             try:
-                cast_data = self.astype(data_type)
+                self.series = self.series.astype(self.dtype.pdtype())
             except Exception as e:
                 raise TypeError(
-                    f"Failed to cast '{self.dtype.__name__}' to '{data_type.__name__}'",
+                    f"Failed to cast '{self._series_dtype().__name__}' to '{self.dtype.__name__}'",
                     e,
                 )
-            super(Column, self).__init__(cast_data)
 
     @property
-    def dtype(self: "Column") -> type:
-        return type(self.values[0])
+    def index(self: "Column[T]") -> Index:
+        return self.series.index
+
+    def tolist(self: "Column[T]") -> list:
+        return self.series.values.tolist()
+
+    @classmethod
+    def _new_data_copy(
+        cls: type["Column"], series: Series, dtype: type[NT]
+    ) -> "Column[NT]":
+        instance: Column[dtype] = cls[dtype]()
+        instance.series = series
+        return instance
+
+    def astype(self: "Column[T]", new_dtype: type[NT]) -> "Column[NT]":
+        return self._new_data_copy(self.series.astype(new_dtype), new_dtype)
+
+    def reset_index(self: "Column[T]", drop: bool = True) -> "Column[T]":
+        return self._new_data_copy(self.series.reset_index(drop=drop), self.dtype)
+
+    def first(self: "Column[T]", n: Optional[int] = 1, offset: Optional[int] = 0) -> T:
+        return self._new_data_copy(
+            self.series[self.index[offset : offset + n]], self.dtype
+        )
+
+    def __eq__(self: "Column[T]", other: Any) -> bool:
+        if type(other) is not Column:
+            return False
+        oc = cast(Column[T], other)
+        return self.dtype == oc.dtype and self.series.equals(oc.series)
+
+    def __len__(self: "Column[T]"):
+        return len(self.series)
+
+    def __iter__(self: "Column[T]") -> Iterator[T]:
+        return iter(self.series)
+
+    def __getitem__(self: "Column[T]", indexable: Indexible) -> "Column[T]":
+        return self._new_data_copy(self.series[indexable], self.dtype)
+
+    def __str__(self: "Column[T]") -> str:
+        if len(self.series) == 0:
+            return f"Column([], dtype: {self.dtype.__name__})"
+        else:
+            str_def = str(self.series)
+            dtype_ind = str_def.index("dtype:")
+            str_def = str_def[: dtype_ind + 7] + str(self.dtype.__name__)
+            return str_def
+
+    def __repr__(self: "Column[T]") -> str:
+        return str(self)
+
 
 class ColumnAlias:
     _name: Optional[str]
+    dtype: DataType
     __origin__: type = Column
     __args__: tuple[type]
     __parameters__: tuple[type]
 
-    def __init__(self, data_type: type, name: Optional[str] = None) -> None:
-        self.__args__ = (data_type,)
-        self.__parameters__ = (data_type,)
+    def __init__(self, dtype: type, name: Optional[str] = None) -> None:
+        self.dtype = DataType(dtype)
+        self.__args__ = (self.dtype,)
+        self.__parameters__ = (self.dtype,)
         self._name = name
 
-    def __call__(self, data: list) -> Column:
-        return Column(data, self.__args__[0])
+    def __call__(self, data: Optional[list] = None) -> Column:
+        return Column(data=data, dtype=self.dtype)
 
     def __str__(self) -> str:
         if self._name is None:
@@ -61,7 +141,7 @@ class ColumnAlias:
         return self._name
 
     def __repr__(self) -> str:
-        repr = f"{Column.__module__}.{Column.__name__}[{self.__args__[0].__name__}]"
+        repr_def = f"{Column.__module__}.{Column.__name__}[{self.dtype.__name__}]"
         if self._name is not None:
-            repr = f"{self._name}:{repr}"
-        return repr
+            repr_def = f"{self._name}:{repr_def}"
+        return repr_def
