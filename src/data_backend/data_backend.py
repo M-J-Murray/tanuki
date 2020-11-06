@@ -1,5 +1,5 @@
-from abc import abstractmethod
-from typing import Any, Generic, TypeVar, Union
+from abc import abstractmethod, abstractproperty
+from typing import Any, Generic, Iterable, TypeVar, Union
 
 from pandas import Index
 
@@ -21,8 +21,8 @@ class ILocIndexer(Generic[T]):
 
 
 class DataBackend:
-    @abstractmethod
-    def columns(self) -> set[str]:
+    @abstractproperty
+    def columns(self) -> list[str]:
         ...
 
     @abstractmethod
@@ -33,15 +33,15 @@ class DataBackend:
     def is_row(self) -> bool:
         ...
 
-    @abstractmethod
+    @abstractproperty
     def index(self) -> Index:
         ...
 
-    @abstractmethod
+    @abstractproperty
     def loc(self: T) -> LocIndexer[T]:
         ...
 
-    @abstractmethod
+    @abstractproperty
     def iloc(self: T) -> ILocIndexer[T]:
         ...
 
@@ -75,6 +75,10 @@ class DataBackend:
 
     @abstractmethod
     def __setitem__(self, item: str, value: Column) -> Column:
+        ...
+
+    @abstractmethod
+    def set_index(self: T, column: Union[str, Iterable]) -> T:
         ...
 
     @abstractmethod

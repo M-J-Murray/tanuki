@@ -1,5 +1,4 @@
 from hamcrest import assert_that, equal_to, is_, is_in
-import numpy as np
 from pytest import fail
 
 from src.data_store.column import Column, ColumnAlias
@@ -19,6 +18,8 @@ class TestDataStore:
         cls.test_store = ExampleStore(
             a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]
         )
+        cls.test_row0 = ExampleStore(a="a", b=1, c=True)
+        cls.test_row2 = ExampleStore(a="c", b=3, c=True)
 
     def test_get_column_by_name(self) -> None:
         assert_that(self.test_store.a.tolist(), equal_to(["a", "b", "c"]))
@@ -99,10 +100,25 @@ class TestDataStore:
         assert_that(test_slice.b, equal_to(1))
         assert_that(test_slice.b, equal_to(True))
 
-    def test_get_index(self) -> None:
-        assert_that(self.test_store.index.to_list(), equal_to([0, 1, 2]))
+    def test_iloc(self) -> None:
+        actual_series = self.test_store.iloc[0]
+        assert_that(actual_series.equals(self.test_row0), is_(True))
+
+    def test_loc(self) -> None:
         test_slice = self.test_store.iloc[[0, 2]]
-        assert_that(test_slice.index.to_list(), equal_to([0, 2]))
+        actual_series = test_slice.loc[2]
+        assert_that(actual_series.equals(self.test_row2), is_(True))
+
+    def test_set_index(self) -> None:
+        test_slice = self.test_store.iloc[[0, 2]]
+        assert_that(test_slice.index.tolist(), equal_to([0, 2]))
+        test_slice = test_slice.set_index("b")
+        assert_that(test_slice.index.tolist(), equal_to([1, 3]))
+        
+    def test_get_index(self) -> None:
+        assert_that(self.test_store.index.tolist(), equal_to([0, 1, 2]))
+        test_slice = self.test_store.iloc[[0, 2]]
+        assert_that(test_slice.index.tolist(), equal_to([0, 2]))
 
     def test_reset_index(self) -> None:
         test_slice = self.test_store.iloc[[0, 2]]

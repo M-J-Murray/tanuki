@@ -1,12 +1,24 @@
 from __future__ import annotations
 
-from typing import Any, cast, Generic, get_type_hints, Type, TypeVar, Union
+from typing import (
+    Any,
+    cast,
+    Generic,
+    get_type_hints,
+    Iterable,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
-from pandas import Index
+from pandas import DataFrame, Index, Series
 
+from src.data_backend.data_backend import DataBackend
+from src.data_backend.pandas_backend import PandasBackend
+from src.data_backend.sqlite3_backend import Sqlite3Backend
 from src.data_store.column import Column, ColumnAlias
-from src.data_store.data_backend import DataBackend
-from src.data_store.pandas_backend import PandasBackend
+from src.database.data_token import DataToken
 
 T = TypeVar("T", bound="DataStore")
 
@@ -24,21 +36,41 @@ class DataStore:
             col._name = name
             setattr(cls, name, col)
 
-    def __init__(self: T, **column_data: dict[str, Column]) -> None:
+    def __init__(
+        self: T, index: Optional[list] = None, **column_data: dict[str, Column]
+    ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self._data_backend = PandasBackend(column_data)
+            self._data_backend = PandasBackend(column_data, index)
             self._validate_data_frame()
             self._attach_columns()
         else:
-            self._data_backend = PandasBackend()
+            self._data_backend = PandasBackend(index=index)
 
-        self.columns = self._parse_active_columns().values()
+        self._compile()
+
+    def _compile(self: T) -> None:
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
-        self.index = self._data_backend.index()
+        self.columns = list(self._active_columns.values())
+        self.index = self._data_backend.index
         self._loc = DataStore._LocIndexer[T](self)
         self._iloc = DataStore._ILocIndexer[T](self)
+
+    @classmethod
+    def from_data_token(cls: Type[T], data_token: DataToken) -> T:
+        return cls._from_data_backend(Sqlite3Backend(data_token))
+
+    @classmethod
+    def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:
+        return cls._from_data_backend(PandasBackend(data))
+
+    @classmethod
+    def _from_data_backend(cls: Type[T], data_backend: DataBackend) -> T:
+        instance = cls()
+        instance._data_backend = data_backend
+        instance._compile()
+        return instance
 
     @property
     def loc(self: T) -> DataStore._LocIndexer[T]:
@@ -66,7 +98,7 @@ class DataStore:
 
     def _parse_active_columns(self) -> dict[str, ColumnAlias]:
         columns = self._parse_columns()
-        backend_columns = self._data_backend.columns() & columns.keys()
+        backend_columns = [col for col in self._data_backend.columns if col in columns]
         active_columns = {}
         for col in backend_columns:
             active_columns[col] = columns[col]
@@ -98,8 +130,7 @@ class DataStore:
 
     @classmethod
     def _new_data_copy(cls: type[T], data_backend: DataBackend) -> T:
-        instance = cls(**data_backend.to_dict("list"))
-        instance.index = data_backend.index()
+        instance = cls(index=data_backend.index, **data_backend.to_dict("list"))
         return instance
 
     def __contains__(self, key):
@@ -155,6 +186,9 @@ class DataStore:
             f"Could not match '{name}' to {self.__class__.__name__} column"
         )
 
+    def set_index(self: T, column: Union[str, Iterable]) -> T:
+        return self._new_data_copy(self._data_backend.set_index(column))
+
     def reset_index(self: T, drop: bool = True) -> T:
         return self._new_data_copy(self._data_backend.reset_index(drop=drop))
 
@@ -192,7 +226,7 @@ class DataStore:
 
         def __getitem__(self, item: Union[int, list, slice]) -> T:
             return self._data_store._new_data_copy(
-                self._data_store._data_backend.iloc()[item]
+                self._data_store._data_backend.iloc[item]
             )
 
     class _LocIndexer(Generic[T]):
@@ -203,5 +237,5 @@ class DataStore:
 
         def __getitem__(self, item: Union[Any, list, slice]) -> T:
             return self._data_store._new_data_copy(
-                self._data_store._data_backend.loc()[item]
+                self._data_store._data_backend.loc[item]
             )

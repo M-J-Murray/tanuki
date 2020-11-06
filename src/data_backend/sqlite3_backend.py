@@ -7,36 +7,22 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.column import Column
+from src.database.data_token import DataToken
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
 
-class PandasBackend(DataBackend):
-    _data: Union[Series, DataFrame]
+class Sqlite3Backend(DataBackend):
+    _data_token: DataToken
     _loc: _LocIndexer
     _iloc: _ILocIndexer
 
-    def __init__(
-        self, data: Optional[Union(Series, DataFrame, dict[str, Column])] = None
-    ) -> None:
-        if data is None:
-            self._data = DataFrame(dtype="object")
-        elif type(data) is Series or type(data) is DataFrame:
-            self._data = data
-        elif type(data) is dict:
-            values = next(iter(data.values()))
-            if type(values) is not list:
-                self._data = Series(data)
-            elif len(values) > 1:
-                self._data = DataFrame(data)
-            else:
-                self._data = DataFrame(data).iloc[0]
-        else:
-            raise ValueError(f"Received unexpected value type {type(data)}: {data}")
+    def __init__(self, data_token: DataToken) -> None:
+        self._data_token = data_token
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
-    def columns(self) -> set[str]:
+    def columns(self) -> list[str]:
         if self.is_row():
             return self._data.index
         else:
@@ -54,22 +40,22 @@ class PandasBackend(DataBackend):
     def index(self) -> Index:
         return self._data.index
 
-    def loc(self: PandasBackend) -> LocIndexer[PandasBackend]:
+    def loc(self: Sqlite3Backend) -> LocIndexer[Sqlite3Backend]:
         return self._loc
 
-    def iloc(self: PandasBackend) -> ILocIndexer[PandasBackend]:
+    def iloc(self: Sqlite3Backend) -> ILocIndexer[Sqlite3Backend]:
         return self._iloc
 
     def __eq__(self, other):
-        if type(other) is not PandasBackend:
+        if type(other) is not Sqlite3Backend:
             return False
-        oc = cast(PandasBackend, other)
+        oc = cast(Sqlite3Backend, other)
         return self._data == oc._data
 
     def equals(self, other):
-        if type(other) is not PandasBackend:
+        if type(other) is not Sqlite3Backend:
             return False
-        oc = cast(PandasBackend, other)
+        oc = cast(Sqlite3Backend, other)
         return self._data.equals(oc._data)
 
     def __len__(self):
@@ -80,7 +66,7 @@ class PandasBackend(DataBackend):
 
     def iterrows(self):
         for i, row in self._data.iterrows():
-            yield (i, PandasBackend(row))
+            yield (i, Sqlite3Backend(row))
 
     def itertuples(self):
         return self._data.itertuples()
@@ -94,8 +80,8 @@ class PandasBackend(DataBackend):
     def __setitem__(self, item: str, value: Column) -> Column:
         self._data[item] = value.series
 
-    def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
-        return PandasBackend(self._data.reset_index(drop=drop))
+    def reset_index(self: Sqlite3Backend, drop: bool = False) -> Sqlite3Backend:
+        return Sqlite3Backend(self._data.reset_index(drop=drop))
 
     def __str__(self) -> str:
         if type(self._data) == Series:
@@ -107,21 +93,21 @@ class PandasBackend(DataBackend):
         return str(self)
 
 
-class _ILocIndexer(ILocIndexer[PandasBackend]):
-    _data_backend: PandasBackend
+class _ILocIndexer(ILocIndexer[Sqlite3Backend]):
+    _data_backend: Sqlite3Backend
 
-    def __init__(self, data_backend: PandasBackend) -> None:
+    def __init__(self, data_backend: Sqlite3Backend) -> None:
         self._data_backend = data_backend
 
-    def __getitem__(self, item: Union[int, list, slice]) -> PandasBackend:
-        return PandasBackend(self._data_backend._data.iloc[item])
+    def __getitem__(self, item: Union[int, list, slice]) -> Sqlite3Backend:
+        return Sqlite3Backend(self._data_backend._data.iloc[item])
 
 
-class _LocIndexer(LocIndexer[PandasBackend]):
-    _data_backend: PandasBackend
+class _LocIndexer(LocIndexer[Sqlite3Backend]):
+    _data_backend: Sqlite3Backend
 
-    def __init__(self, data_backend: PandasBackend) -> None:
+    def __init__(self, data_backend: Sqlite3Backend) -> None:
         self._data_backend = data_backend
 
-    def __getitem__(self, item: Union[Any, list, slice]) -> PandasBackend:
-        return PandasBackend(self._data_backend._data.iloc[item])
+    def __getitem__(self, item: Union[Any, list, slice]) -> Sqlite3Backend:
+        return Sqlite3Backend(self._data_backend._data.iloc[item])
