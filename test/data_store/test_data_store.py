@@ -4,7 +4,7 @@ from pytest import fail
 from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 
-# TODO: look at removing subclass generic reference
+
 class ExampleStore(DataStore):
     a: Column[str]
     b: Column[int]
@@ -18,7 +18,7 @@ class TestDataStore:
             a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]
         )
 
-    def test_get_column_by_name(self) -> None:       
+    def test_get_column_by_name(self) -> None:
         assert_that(self.test_store.a.tolist(), equal_to(["a", "b", "c"]))
         assert_that(self.test_store.b.tolist(), equal_to([1, 2, 3]))
         assert_that(self.test_store.c.tolist(), equal_to([True, False, True]))
@@ -28,11 +28,24 @@ class TestDataStore:
         assert_that(self.test_store["b"].tolist(), equal_to([1, 2, 3]))
         assert_that(self.test_store["c"].tolist(), equal_to([True, False, True]))
 
-    def test_missing_columns(self) -> None:
+    def test_missing_column(self) -> None:
+        test_store = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3])
+        assert_that(test_store["a"].tolist(), equal_to(["a", "b", "c"]))
+        assert_that(test_store["b"].tolist(), equal_to([1, 2, 3]))
+        assert_that(test_store.c, equal_to(None))
+        assert_that(test_store["c"], equal_to(None))
+
         try:
-            ExampleStore(a=["a", "b", "c"], b=[1, 2, 3])
+            test_store.d
+            fail("Expected exception")
         except Exception as e:
-            assert_that("Column data was missing for: ['c']", is_in(str(e)))
+            assert_that("Could not match 'd' to ExampleStore column", is_in(str(e)))
+
+        try:
+            test_store["d"]
+            fail("Expected exception")
+        except Exception as e:
+            assert_that("Could not match 'd' to ExampleStore column", is_in(str(e)))
 
     def test_castable_types(self) -> None:
         test_store = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[1, 0, 1])
@@ -43,12 +56,10 @@ class TestDataStore:
     def test_missing_types(self) -> None:
         try:
 
-            class MissingClass:
-                ...
-
             class TempStore(DataStore):
-                a: Column[MissingClass]
+                a: Column
 
+            fail("Expected exception")
         except Exception as e:
             assert_that(
                 "Failed to find column types for the following columns: ['a']",
@@ -57,9 +68,11 @@ class TestDataStore:
 
     def test_invalid_types(self) -> None:
         try:
-            ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[1.23, 2.23, 3.23])
+            ExampleStore(a=["a", "b", "c"], b=["a", "b", "c"], c=[True, False, True])
+            fail("Expected exception")
+
         except Exception as e:
-            assert_that("Invalid types provided for: ['c']", is_in(str(e)))
+            assert_that("Invalid types provided for: ['b']", is_in(str(e)))
 
     def test_builder(self) -> None:
         builder = ExampleStore.builder()
@@ -70,9 +83,25 @@ class TestDataStore:
         assert_that(test_store.b.tolist(), equal_to([1, 2, 3]))
         assert_that(test_store.c.tolist(), equal_to([True, False, True]))
 
+    def test_single_row(self) -> None:
+        example_row = ExampleStore(a=["a"], b=[1])
+        assert_that(example_row.a, equal_to("a"))
+        assert_that(example_row.b, equal_to(1))
+
+        example_row = ExampleStore(a="a", b=1)
+        assert_that(example_row.a, equal_to("a"))
+        assert_that(example_row.b, equal_to(1))
+
+        test_slice = self.test_store.iloc[0]
+        assert_that(test_slice.a, equal_to("a"))
+        assert_that(test_slice.b, equal_to(1))
+        assert_that(test_slice.b, equal_to(True))
+
     def test_reset_index(self) -> None:
-        test_slice = self.test_store.iloc[0:2]
-        pass
+        test_slice = self.test_store.iloc[[0, 2]]
+        assert_that(test_slice.index.tolist(), equal_to([0, 2]))
+        test_slice = test_slice.reset_index(drop=True)
+        assert_that(test_slice.index.tolist(), equal_to([0, 1]))
 
     def test_contains(self, key) -> None:
         fail("Not Implemented")

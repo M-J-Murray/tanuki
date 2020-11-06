@@ -143,5 +143,5 @@ class ColumnAlias:
     def __repr__(self) -> str:
         repr_def = f"{Column.__module__}.{Column.__name__}[{self.dtype.__name__}]"
         if self._name is not None:
-            repr_def = f"{self._name}:{repr_def}"
+            repr_def = f"{self._name}: {repr_def}"
         return repr_def

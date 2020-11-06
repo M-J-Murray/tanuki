@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-from typing import Any, Union, cast, Generic, get_type_hints, Type, TypeVar
+from typing import Any, cast, Generic, get_type_hints, Type, TypeVar, Union
 
-from pandas import DataFrame
+from numpy import ndarray
 
 from src.data_store.column import Column, ColumnAlias
+from src.data_store.data_backend import DataBackend
+from src.data_store.pandas_backend import PandasBackend
 
 T = TypeVar("T", bound="DataStore")
 
 
 class DataStore:
-    data_frame: DataFrame
-    loc: DataStore._LocIndexerFrame
-    iloc: DataStore._ILocIndexerFrame
+    _data_backend: DataBackend
+    index: ndarray
+    loc: DataStore._LocIndexer
+    iloc: DataStore._ILocIndexer
 
     def __init_subclass__(cls) -> None:
         super(DataStore, cls).__init_subclass__()
@@ -23,14 +26,15 @@ class DataStore:
     def __init__(self, **column_data: dict[str, Column]) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self.data_frame = DataFrame(column_data)
+            self._data_backend = PandasBackend(column_data)
             self._validate_data_frame()
             self._attach_columns()
         else:
-            self.data_frame = DataFrame()
+            self._data_backend = PandasBackend()
 
-        self.loc = DataStore._LocIndexerFrame(self)
-        self.iloc = DataStore._ILocIndexerFrame(self)
+        self.index = self._data_backend.index()
+        self.loc = DataStore._LocIndexer(self)
+        self.iloc = DataStore._ILocIndexer(self)
 
     @classmethod
     def columns(cls) -> dict[str, ColumnAlias]:
@@ -38,9 +42,9 @@ class DataStore:
         columns: dict[str, Column] = {}
         missing_types = []
         for name, col in variables.items():
-            if type(col) is Column:
+            if col is Column or type(col) is Column:
                 missing_types.append(name)
-            elif type(col) is ColumnAlias:
+            elif col is ColumnAlias or type(col) is ColumnAlias:
                 columns[name] = col
         if len(missing_types) > 0:
             raise TypeError(
@@ -48,79 +52,89 @@ class DataStore:
             )
         return columns
 
-    def _validate_data_frame(self) -> None:
+    def active_columns(self) -> dict[str, ColumnAlias]:
         columns = self.columns()
+        backend_columns = self._data_backend.columns() & columns.keys()
+        active_columns = {}
+        for col in backend_columns:
+            active_columns[col] = columns[col]
+        return active_columns
 
-        missing_cols = []
+    def _validate_data_frame(self) -> None:
+        columns = self.active_columns()
+
         invalid_types = []
         for name, col in columns.items():
-            if name not in self.data_frame:
-                missing_cols.append(name)
-            else:
-                data = Column(self.data_frame[name])
-                if data.dtype != col.dtype:
-                    try:
-                        data = col(data)
-                    except:
-                        invalid_types.append(name)
+            data = Column(self._data_backend[name])
+            if data.dtype != col.dtype:
+                try:
+                    self._data_backend[name] = col(data)
+                except:
+                    invalid_types.append(name)
 
-        errors = []
-        if len(missing_cols) != 0:
-            errors.append(f"Column data was missing for: {missing_cols}")
         if len(invalid_types) != 0:
-            errors.append(f"Invalid types provided for: {invalid_types}")
-        if len(errors) != 0:
-            raise ValueError("\n".join(errors))
+            raise TypeError(f"Invalid types provided for: {invalid_types}")
 
     def _attach_columns(self) -> None:
         columns = self.columns()
+        active_columns = self.active_columns()
         for col in columns:
-            if col in self.data_frame:
-                setattr(self, col, self.data_frame[col])
+            if col in active_columns:
+                setattr(self, col, self._data_backend[col])
             else:
                 setattr(self, col, None)
 
     @classmethod
-    def _new_data_copy(cls: type[T], data_frame: DataFrame) -> T:
+    def _new_data_copy(cls: type[T], data_backend: DataBackend) -> T:
         instance: T = cls()
-        instance.data_frame = data_frame
+        instance._data_backend = data_backend
+        instance.index = data_backend.index()
+        instance.loc = DataStore._LocIndexer(instance)
+        instance.iloc = DataStore._ILocIndexer(instance)
         instance._attach_columns()
         return instance
 
-    def reset_index(self: T, drop: bool = True) -> T:
-        return self._new_data_copy(self.data_frame.reset_index(drop=drop))
-
     def __contains__(self, key):
-        if type(key) is str:
-            return key in self.columns()
+        return key in self.columns()
+
+    def __str__(self) -> str:
+        if len(self._data_backend) == 0:
+            return f"Empty {self.__class__.__name__}"
         else:
-            return len(self.data_frame.merge(key)) == len(self.data_frame)
+            return f"{self.__class__.__name__}{self._data_backend}"
+
+    def __repr__(self) -> str:
+        return str(self)
 
     def __eq__(self, other):
         if type(other) is not type(self):
             return False
         oc = cast(DataStore, other)
-        return self.data_frame.equals(oc.data_frame)
+        return self._data_backend == oc._data_backend
 
     def __len__(self):
-        return len(self.data_frame)
+        return len(self._data_backend)
 
     def __iter__(self):
-        return iter(self.data_frame)
+        return iter(self._data_backend)
 
     def __getitem__(self, item: str) -> Column:
-        return self.columns()[item](self.data_frame[item])
-
-    def __str__(self) -> str:
-        """TODO!"""
-        if len(self.data_frame) == 0:
-            return f"Empty {self.__class__.__name__}"
+        if item not in self.columns():
+            raise ValueError(
+                f"Could not match '{item}' to {self.__class__.__name__} column"
+            )
+        elif item not in self.active_columns():
+            return None
         else:
-            return f"{self.__class__.__name__}n{self.data_frame}"
+            return self.columns()[item](self._data_backend[item])
 
-    def __repr__(self) -> str:
-        """TODO!"""
-        return str(self)
+    def __getattr__(self, name: str) -> Any:
+        raise ValueError(
+            f"Could not match '{name}' to {self.__class__.__name__} column"
+        )
+
+    def reset_index(self: T, drop: bool = True) -> T:
+        return self._new_data_copy(self._data_backend.reset_index(drop=drop))
 
     @classmethod
     def builder(
@@ -148,24 +162,24 @@ class DataStore:
         def build(self) -> T:
             return self._store_class(**self._column_data)
 
-    class _ILocIndexerFrame(Generic[T]):
+    class _ILocIndexer(Generic[T]):
         _data_store: T
 
         def __init__(self, data_store: T) -> None:
             self._data_store = data_store
 
-        def __getitem__(self, item: Union[int, slice]) -> T:
+        def __getitem__(self, item: Union[int, list, slice]) -> T:
             return self._data_store._new_data_copy(
-                self._data_store.data_frame.iloc[item]
+                self._data_store._data_backend.iloc()[item]
             )
 
-    class _LocIndexerFrame:
+    class _LocIndexer:
         _data_store: T
 
         def __init__(self, data_store: T) -> None:
             self._data_store = data_store
 
-        def __getitem__(self, item: Union[Any, slice]) -> T:
+        def __getitem__(self, item: Union[Any, list, slice]) -> T:
             return self._data_store._new_data_copy(
-                self._data_store.data_frame.loc[item]
+                self._data_store._data_backend.loc()[item]
             )
