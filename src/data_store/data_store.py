@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast, Generic, get_type_hints, Type, TypeVar, Union
 
-from numpy import ndarray
+from pandas import Index
 
 from src.data_store.column import Column, ColumnAlias
 from src.data_store.data_backend import DataBackend
@@ -13,17 +13,18 @@ T = TypeVar("T", bound="DataStore")
 
 class DataStore:
     _data_backend: DataBackend
-    index: ndarray
-    loc: DataStore._LocIndexer
-    iloc: DataStore._ILocIndexer
+    columns: list[ColumnAlias]
+    index: Index
+    _loc: DataStore._LocIndexer[T]
+    _iloc: DataStore._ILocIndexer[T]
 
     def __init_subclass__(cls) -> None:
         super(DataStore, cls).__init_subclass__()
-        for name, col in cls.columns().items():
+        for name, col in cls._parse_columns().items():
             col._name = name
             setattr(cls, name, col)
 
-    def __init__(self, **column_data: dict[str, Column]) -> None:
+    def __init__(self: T, **column_data: dict[str, Column]) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
             self._data_backend = PandasBackend(column_data)
@@ -32,12 +33,23 @@ class DataStore:
         else:
             self._data_backend = PandasBackend()
 
+        self.columns = self._parse_active_columns().values()
+        self._all_columns = self._parse_columns()
+        self._active_columns = self._parse_active_columns()
         self.index = self._data_backend.index()
-        self.loc = DataStore._LocIndexer(self)
-        self.iloc = DataStore._ILocIndexer(self)
+        self._loc = DataStore._LocIndexer[T](self)
+        self._iloc = DataStore._ILocIndexer[T](self)
+
+    @property
+    def loc(self: T) -> DataStore._LocIndexer[T]:
+        return self._loc
+
+    @property
+    def iloc(self: T) -> DataStore._ILocIndexer[T]:
+        return self._iloc
 
     @classmethod
-    def columns(cls) -> dict[str, ColumnAlias]:
+    def _parse_columns(cls) -> dict[str, ColumnAlias]:
         variables = get_type_hints(cls)
         columns: dict[str, Column] = {}
         missing_types = []
@@ -52,8 +64,8 @@ class DataStore:
             )
         return columns
 
-    def active_columns(self) -> dict[str, ColumnAlias]:
-        columns = self.columns()
+    def _parse_active_columns(self) -> dict[str, ColumnAlias]:
+        columns = self._parse_columns()
         backend_columns = self._data_backend.columns() & columns.keys()
         active_columns = {}
         for col in backend_columns:
@@ -61,7 +73,7 @@ class DataStore:
         return active_columns
 
     def _validate_data_frame(self) -> None:
-        columns = self.active_columns()
+        columns = self._parse_active_columns()
 
         invalid_types = []
         for name, col in columns.items():
@@ -76,8 +88,8 @@ class DataStore:
             raise TypeError(f"Invalid types provided for: {invalid_types}")
 
     def _attach_columns(self) -> None:
-        columns = self.columns()
-        active_columns = self.active_columns()
+        columns = self._parse_columns()
+        active_columns = self._parse_active_columns()
         for col in columns:
             if col in active_columns:
                 setattr(self, col, self._data_backend[col])
@@ -86,16 +98,12 @@ class DataStore:
 
     @classmethod
     def _new_data_copy(cls: type[T], data_backend: DataBackend) -> T:
-        instance: T = cls()
-        instance._data_backend = data_backend
+        instance = cls(**data_backend.to_dict("list"))
         instance.index = data_backend.index()
-        instance.loc = DataStore._LocIndexer(instance)
-        instance.iloc = DataStore._ILocIndexer(instance)
-        instance._attach_columns()
         return instance
 
     def __contains__(self, key):
-        return key in self.columns()
+        return str(key) in self._parse_columns()
 
     def __str__(self) -> str:
         if len(self._data_backend) == 0:
@@ -112,21 +120,35 @@ class DataStore:
         oc = cast(DataStore, other)
         return self._data_backend == oc._data_backend
 
+    def equals(self, other):
+        if type(other) is not type(self):
+            return False
+        oc = cast(DataStore, other)
+        return self._data_backend.equals(oc._data_backend)
+
     def __len__(self):
         return len(self._data_backend)
 
     def __iter__(self):
-        return iter(self._data_backend)
+        for column in self._data_backend:
+            yield self._active_columns[column]
+
+    def iterrows(self):
+        for i, row in self._data_backend.iterrows():
+            yield (i, self._new_data_copy(row))
+
+    def itertuples(self):
+        return self._data_backend.itertuples()
 
     def __getitem__(self, item: str) -> Column:
-        if item not in self.columns():
+        if item not in self._parse_columns():
             raise ValueError(
                 f"Could not match '{item}' to {self.__class__.__name__} column"
             )
-        elif item not in self.active_columns():
+        elif item not in self._parse_active_columns():
             return None
         else:
-            return self.columns()[item](self._data_backend[item])
+            return self._parse_columns()[item](self._data_backend[item])
 
     def __getattr__(self, name: str) -> Any:
         raise ValueError(
@@ -173,7 +195,7 @@ class DataStore:
                 self._data_store._data_backend.iloc()[item]
             )
 
-    class _LocIndexer:
+    class _LocIndexer(Generic[T]):
         _data_store: T
 
         def __init__(self, data_store: T) -> None:

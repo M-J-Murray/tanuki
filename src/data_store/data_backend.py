@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, Generic, TypeVar, Union
 
-from numpy import ndarray
+from pandas import Index
 
 from src.data_store.column import Column
 
@@ -26,11 +26,15 @@ class DataBackend:
         ...
 
     @abstractmethod
+    def to_dict(self, orient) -> dict[str, any]:
+        ...
+
+    @abstractmethod
     def is_row(self) -> bool:
         ...
 
     @abstractmethod
-    def index(self) -> ndarray:
+    def index(self) -> Index:
         ...
 
     @abstractmethod
@@ -46,11 +50,23 @@ class DataBackend:
         ...
 
     @abstractmethod
+    def equals(self, other):
+        ...
+
+    @abstractmethod
     def __len__(self):
         ...
 
     @abstractmethod
     def __iter__(self):
+        ...
+
+    @abstractmethod
+    def iterrows(self):
+        ...
+
+    @abstractmethod
+    def itertuples(self):
         ...
 
     @abstractmethod

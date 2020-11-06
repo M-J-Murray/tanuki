@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any, cast, Optional, Union
 
-from numpy import ndarray
+from pandas import Index
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
@@ -42,10 +42,16 @@ class PandasBackend(DataBackend):
         else:
             return self._data.columns
 
+    def to_dict(self, orient) -> dict[str, any]:
+        if self.is_row():
+            return self._data.to_dict()
+        else:
+            return self._data.to_dict(orient)
+
     def is_row(self) -> bool:
         return type(self._data) == Series
 
-    def index(self) -> ndarray:
+    def index(self) -> Index:
         return self._data.index
 
     def loc(self: PandasBackend) -> LocIndexer[PandasBackend]:
@@ -55,13 +61,29 @@ class PandasBackend(DataBackend):
         return self._iloc
 
     def __eq__(self, other):
-        return self._data == other
+        if type(other) is not PandasBackend:
+            return False
+        oc = cast(PandasBackend, other)
+        return self._data == oc._data
+
+    def equals(self, other):
+        if type(other) is not PandasBackend:
+            return False
+        oc = cast(PandasBackend, other)
+        return self._data.equals(oc._data)
 
     def __len__(self):
         return len(self._data)
 
     def __iter__(self):
         return iter(self._data)
+
+    def iterrows(self):
+        for i, row in self._data.iterrows():
+            yield (i, PandasBackend(row))
+
+    def itertuples(self):
+        return self._data.itertuples()
 
     def __getitem__(self, item: str) -> Any:
         if self.is_row():
