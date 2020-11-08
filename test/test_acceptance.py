@@ -1,12 +1,12 @@
 from src.database.data_token import DataToken
 from test.helpers.sqlite3_container import Sqlite3Container
 
-from hamcrest import assert_that, equal_to, is_in, not_
+from hamcrest import assert_that, equal_to
 from pytest import fail
 
 from src.data_store.column import Column
 from src.data_store.data_store import DataStore
-from src.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
+from src.database.sqlite3_database import Sqlite3Database
 
 
 class ExampleStore(DataStore):
@@ -15,26 +15,29 @@ class ExampleStore(DataStore):
     c: Column[bool]
 
 
-class TestSqlite3Adapter:
+class TestAcceptance:
     sql_db: Sqlite3Container
-    db_adapter: Sqlite3Adapter
 
     @classmethod
     def setup_class(cls) -> None:
         cls.sql_db = Sqlite3Container()
-        cls.db_adapter = Sqlite3Adapter(cls.sql_db.connection_config())
 
     def teardown_method(self) -> None:
-        self.db_adapter.stop()
         self.sql_db.reset()
-        self.db_adapter = Sqlite3Adapter(self.sql_db.connection_config())
 
     @classmethod
     def teardown_class(cls) -> None:
-        cls.db_adapter.stop()
         cls.sql_db.stop()
 
-    def test_insert(self) -> None:
+    def test_create_insert_query_data(self) -> None:
+        insert_store = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        conn_conf = self.sql_db.connection_config()
+
         data_token = DataToken("test_table", "raw")
-        test_store = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
-        self.db_adapter.insert(data_token, test_store)
+        with Sqlite3Database(conn_conf) as db:
+            db.insert(data_token, insert_store)
+
+            query_store = ExampleStore.link(data_token)
+            query_mask = query_store.b > 2
+            query_store = query_store[query_mask]
+        fail("Write assertions")

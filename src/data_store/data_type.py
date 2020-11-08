@@ -226,6 +226,16 @@ class Timedelta(DataType):
         return (np.dtype("<m8[ns]"), np.timedelta64, pd.Timedelta, timedelta)
 
 
+class Bytes(DataType):
+    @classmethod
+    def pdtype(cls):
+        return bytes
+
+    @classmethod
+    def equivalents(cls) -> tuple[type]:
+        return (bytes,)
+
+
 class Array(DataType):
     @classmethod
     def pdtype(cls):

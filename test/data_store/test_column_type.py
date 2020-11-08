@@ -1,16 +1,12 @@
-from datetime import datetime
-from numbers import Number
-from typing import Iterable
-
 from attr import dataclass
 from hamcrest import assert_that, close_to, equal_to
-import numpy as np
 import pytest
 
 from src.data_store.column import Column
 from src.data_store.data_type import (
     Array,
     Boolean,
+    Bytes,
     DataType,
     Float16,
     Float32,
@@ -52,6 +48,7 @@ test_data = [
     (UInt8, [1, 2, 3]),
     (Timestamp, [0, 1, 2]),
     (Timedelta, [1, 2, 3]),
+    (Bytes, [b"a", b"b", b"c"]),
     (Array, [[1], [2], [3]]),
     (TypeAlias(list[int]), [[1], [2], [3]]),
     (DataType(list[int]), [[1], [2], [3]]),

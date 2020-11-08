@@ -58,8 +58,8 @@ class DataStore:
         self._iloc = DataStore._ILocIndexer[T](self)
 
     @classmethod
-    def from_data_token(cls: Type[T], data_token: DataToken) -> T:
-        return cls._from_data_backend(Sqlite3Backend(data_token))
+    def link(cls: Type[T], data_token: DataToken, read_only: bool = True) -> T:
+        return cls._from_data_backend(Sqlite3Backend(data_token, read_only))
 
     @classmethod
     def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:

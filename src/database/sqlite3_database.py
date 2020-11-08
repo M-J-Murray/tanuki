@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.database.adapter.sqlite3_adapter import Sqlite3Adapter
+from src.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
 
 from .connection_config import ConnectionConfig
 from .database import Database

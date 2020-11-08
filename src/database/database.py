@@ -10,14 +10,13 @@ from pandas import Index
 
 import src.data_store.data_store as ds
 import src.database.data_token as dt
-from src.database.data_token import DataToken
 
 
 PUBLIC_GROUP = "public"
 
 
 class TableReference(DataStore):
-    data_token = DataToken("table_reference", PUBLIC_GROUP)
+    data_token = dt.DataToken("table_reference", PUBLIC_GROUP)
 
     table_name: Column[str]
     data_group: Column[str]
@@ -26,7 +25,7 @@ class TableReference(DataStore):
 
 
 class SchemaReference(DataStore):
-    data_token = DataToken("schema_reference", PUBLIC_GROUP)
+    data_token = dt.DataToken("schema_reference", PUBLIC_GROUP)
 
     schema_name: Column[str]
     schema_version: Column[int]
@@ -59,7 +58,7 @@ class Database:
         dt.DataToken._active_db = None
 
     def _setup_reference_tables(self):
-        _db_adapter.create_table()
+        self._db_adapter.create_table()
 
     def _validate_reference_tables(self):
         pass
@@ -86,24 +85,27 @@ class Database:
         pass
 
     def insert(
-        self: Database, data_store: ds.DataStore, ignore_index: bool = False
+        self: Database, data_token: dt.DataToken, data_store: ds.DataStore, ignore_index: bool = False
     ) -> None:
         ...
 
     def update(
-        self: Database, data_store: ds.DataStore, columns: Optional[list[str]]
+        self: Database, data_token: dt.DataToken, data_store: ds.DataStore, *columns: str
     ) -> None:
         ...
 
     def upsert(
-        self: Database, data_store: ds.DataStore, columns: Optional[list[str]]
+        self: Database, data_token: dt.DataToken, data_store: ds.DataStore, *columns: str
     ) -> None:
         ...
 
-    def drop_indices(self: Database, indices: Index) -> None:
+    def drop_indices(self: Database, data_token: dt.DataToken, indices: Index) -> None:
         ...
 
     def drop_table(self: Database, data_token: ds.DataToken) -> None:
+        ...
+
+    def drop_group(self: Database, data_group: str) -> None:
         ...
 
     def copy_table(

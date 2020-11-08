@@ -1,3 +1,0 @@
-
-class SqlStatement:
-    pass
