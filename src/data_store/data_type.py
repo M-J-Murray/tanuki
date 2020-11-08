@@ -1,34 +1,52 @@
-from typing import Any, ClassVar
+from __future__ import annotations
+
+from abc import abstractmethod
+from datetime import datetime, timedelta
+from types import GenericAlias
+from typing import Any, cast, ClassVar
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from abc import abstractclassmethod
 
-class DataType:
-    _type_mappings: ClassVar[dict[type:"DataType"]] = {}
 
-    def __init_subclass__(cls) -> None:
-        super(DataType, cls).__init_subclass__()
-        for type_equiv in cls.equivalents():
-            cls._type_mappings[type_equiv] = cls
-
-    def __new__(cls, data_type: type) -> "DataType":
-        if data_type in cls._type_mappings:
+class MetaDataType(type):
+    def __call__(cls, data_type: type) -> type:
+        if cls is TypeAlias:
+            instance = TypeAlias.__new__(cls)
+            instance.__init__(data_type)
+            return instance
+        elif type(data_type) is GenericAlias:
+            return TypeAlias(data_type)
+        elif data_type in cls._type_mappings:
             return cls._type_mappings[data_type]
         else:
             return data_type
 
-    @abstractclassmethod
+    def __init__(cls, name: str, *_) -> None:
+        if name != "DataType" and name != "TypeAlias":
+            for type_equiv in cls.equivalents():
+                cls._type_mappings[type_equiv] = cls
+
+    @abstractmethod
     def pdtype(cls) -> type:
         ...
 
-    @abstractclassmethod
+    @abstractmethod
     def equivalents(cls) -> tuple[type]:
         ...
 
-    @classmethod
+
+class DataType(metaclass=MetaDataType):
+    _type_mappings: ClassVar[dict[type, DataType]] = {}
+
     def __eq__(cls, o: type) -> bool:
-        return cls == o or cls.pdtype() == 0
+        return cls == o or cls.pdtype() == o
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
 
 
 class String(DataType):
@@ -191,21 +209,21 @@ class UInt8(DataType):
 class Timestamp(DataType):
     @classmethod
     def pdtype(cls):
-        return pd.Timestamp
+        return np.dtype("<M8[ns]")
 
     @classmethod
     def equivalents(cls) -> tuple[type]:
-        return (pd.Timestamp, datetime)
+        return (np.dtype("<M8[ns]"), np.datetime64, pd.Timestamp, datetime)
 
 
 class Timedelta(DataType):
     @classmethod
     def pdtype(cls):
-        return pd.Timedelta
+        return np.dtype("<m8[ns]")
 
     @classmethod
     def equivalents(cls) -> tuple[type]:
-        return (pd.Timedelta, timedelta)
+        return (np.dtype("<m8[ns]"), np.timedelta64, pd.Timedelta, timedelta)
 
 
 class Array(DataType):
@@ -216,6 +234,49 @@ class Array(DataType):
     @classmethod
     def equivalents(cls) -> tuple[type]:
         return (np.ndarray, list, tuple)
+
+
+class TypeAlias(DataType):
+    _alias_type: type
+    _nested_dt: type
+
+    def __init__(self, data_type: GenericAlias) -> None:
+        self._alias_type = DataType(data_type.__origin__)
+        self._nested_dt = DataType(data_type.__args__[0])
+
+    def pdtype(self):
+        return self._alias_type
+
+    def equivalents(self) -> tuple[type]:
+        return (self,)
+
+    def __eq__(self, t: type) -> bool:
+        if type(t) is not TypeAlias:
+            return t is Array and self._alias_type == Array
+        ct = cast(TypeAlias, t)
+        return self._alias_type is ct._alias_type and self._nested_dt == ct._nested_dt
+
+    def __ne__(self, t: type) -> bool:
+        return not self.__eq__(t)
+
+    def __str__(self) -> str:
+        alias_name = (
+            str(self._alias_type)
+            if self._alias_type is DataType
+            else self._alias_type.__name__
+        )
+        nested_name = (
+            str(self._nested_dt)
+            if self._nested_dt is DataType
+            else self._nested_dt.__name__
+        )
+        return f"{alias_name}[{nested_name}]"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
 
 
 class Object(DataType):

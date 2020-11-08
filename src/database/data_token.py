@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from src.database.database import Database
+from src.database.adapter.database_adapter import DatabaseAdapter
 
 
 @dataclass
 class DataToken:
-    _active_db: ClassVar[Database]
+    _active_db: ClassVar[DatabaseAdapter]
 
     table_name: str
     data_group: str

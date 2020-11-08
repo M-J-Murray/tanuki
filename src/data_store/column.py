@@ -1,22 +1,26 @@
-from src.data_store.data_type import DataType, Object
+from types import GenericAlias
 from typing import (
     Any,
+    cast,
     Generic,
+    Iterable,
     Iterator,
+    Optional,
     Type,
     TypeVar,
-    Optional,
     Union,
-    cast,
 )
 
+from hamcrest.core.core.isinstanceof import instance_of
 import numpy as np
-from pandas import Series, Index
+from numpy.lib.function_base import iterable
+from pandas import Index, Series
 
+from src.data_store.data_type import DataType, Object
 
 T = TypeVar("T")
 NT = TypeVar("NT")
-Indexible = Union[any, list[any]]
+Indexible = Union[Any, list, Index]
 
 
 class Column(Generic[T]):
@@ -44,19 +48,35 @@ class Column(Generic[T]):
         if data is not None:
             self._validate_column()
 
+    @staticmethod
+    def _determine_nested_dtype(data: Iterable) -> DataType:
+        sample = next(iter(data))
+        if sample == data:
+            return type(data)
+        elif isinstance(sample, Iterable):
+            nested_type = Column._determine_nested_dtype(sample)
+        else:
+            nested_type = type(sample)
+        return GenericAlias(type(data), nested_type)
+
     def _series_dtype(self: "Column[T]") -> DataType:
         dtype: type
         if self.series.dtype == np.object:
             if len(self.series) == 0:
                 dtype = Object
             else:
-                dtype = type(next(iter(self.series)))
+                sample = self.series.iloc[0]
+                if isinstance(sample, Iterable):
+                    dtype = self._determine_nested_dtype(sample)
+                else:
+                    dtype = type(sample)
+
         else:
             dtype = self.series.dtype
         return DataType(dtype)
 
     def _validate_column(self: "Column[T]") -> None:
-        if self.dtype is not self._series_dtype():
+        if self.dtype != self._series_dtype():
             try:
                 self.series = self.series.astype(self.dtype.pdtype())
             except Exception as e:
