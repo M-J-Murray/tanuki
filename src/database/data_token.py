@@ -1,17 +1,12 @@
 from dataclasses import dataclass
-from typing import ClassVar
-
-from src.database.adapter.database_adapter import DatabaseAdapter
 
 
 @dataclass
 class DataToken:
-    _active_db: ClassVar[DatabaseAdapter]
-
     table_name: str
     data_group: str
 
-    def __init__(self, table_name: str, data_group: str) -> None:
+    def __init__(self: "DataToken", table_name: str, data_group: str) -> None:
         self.table_name = table_name
         self.data_group = data_group
 

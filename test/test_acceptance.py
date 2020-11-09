@@ -37,7 +37,7 @@ class TestAcceptance:
         with Sqlite3Database(conn_conf) as db:
             db.insert(data_token, insert_store)
 
-            query_store = ExampleStore.link(data_token)
+            query_store = ExampleStore.link(db, data_token)
             query_mask = query_store.b > 2
             query_store = query_store[query_mask]
         fail("Write assertions")

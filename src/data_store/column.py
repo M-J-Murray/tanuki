@@ -103,7 +103,7 @@ class Column(Generic[T]):
     def astype(self: "Column[T]", new_dtype: type[NT]) -> "Column[NT]":
         return self._new_data_copy(self.series.astype(new_dtype), new_dtype)
 
-    def reset_index(self: "Column[T]", drop: bool = True) -> "Column[T]":
+    def reset_index(self: "Column[T]", drop: bool = False) -> "Column[T]":
         return self._new_data_copy(self.series.reset_index(drop=drop), self.dtype)
 
     def first(self: "Column[T]", n: Optional[int] = 1, offset: Optional[int] = 0) -> T:

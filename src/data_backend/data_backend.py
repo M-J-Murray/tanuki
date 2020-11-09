@@ -1,22 +1,22 @@
-from abc import abstractmethod, abstractproperty
-from typing import Any, Generic, Iterable, TypeVar, Union
+from abc import abstractclassmethod, abstractmethod, abstractproperty
+from typing import Any, Generic, Iterable, Type, TypeVar, Union
 
 from pandas import Index
 
 from src.data_store.column import Column
 
-T = TypeVar("T", bound="DataBackend")
+B = TypeVar("B", bound="DataBackend")
 
 
-class LocIndexer(Generic[T]):
+class LocIndexer(Generic[B]):
     @abstractmethod
-    def __getitem__(self, item: Union[int, list, slice]) -> T:
+    def __getitem__(self, item: Union[int, list, slice]) -> B:
         ...
 
 
-class ILocIndexer(Generic[T]):
+class ILocIndexer(Generic[B]):
     @abstractmethod
-    def __getitem__(self, item: Union[Any, list, slice]) -> T:
+    def __getitem__(self, item: Union[Any, list, slice]) -> B:
         ...
 
 
@@ -38,11 +38,11 @@ class DataBackend:
         ...
 
     @abstractproperty
-    def loc(self: T) -> LocIndexer[T]:
+    def loc(self: B) -> LocIndexer[B]:
         ...
 
     @abstractproperty
-    def iloc(self: T) -> ILocIndexer[T]:
+    def iloc(self: B) -> ILocIndexer[B]:
         ...
 
     @abstractmethod
@@ -78,9 +78,13 @@ class DataBackend:
         ...
 
     @abstractmethod
-    def set_index(self: T, column: Union[str, Iterable]) -> T:
+    def set_index(self: B, column: Union[str, Iterable]) -> B:
         ...
 
     @abstractmethod
-    def reset_index(self: T, drop: bool = True) -> T:
+    def reset_index(self: B, drop: bool = False) -> B:
+        ...
+
+    @abstractclassmethod
+    def concat(cls: Type[B], all_backends: list[B], ignore_index: bool = False) -> B:
         ...

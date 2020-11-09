@@ -1,4 +1,6 @@
 from __future__ import annotations
+from src.database.adapter.database_adapter import DatabaseAdapter
+from src.database.database import Database
 
 from typing import Any, cast, Optional, Union
 
@@ -13,12 +15,14 @@ from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
 
 class Sqlite3Backend(DataBackend):
+    _db_adapter: DatabaseAdapter
     _data_token: DataToken
     _read_only: bool
     _loc: _LocIndexer
     _iloc: _ILocIndexer
 
-    def __init__(self, data_token: DataToken, read_only: bool) -> None:
+    def __init__(self, db_adapter: DatabaseAdapter, data_token: DataToken, read_only: bool) -> None:
+        self._db_adapter = db_adapter
         self._data_token = data_token
         self._read_only = read_only
         self._loc = _LocIndexer(self)

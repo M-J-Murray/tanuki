@@ -1,8 +1,10 @@
 from __future__ import annotations
+from io import UnsupportedOperation
 
 from typing import (
     Any,
     cast,
+    ClassVar,
     Generic,
     get_type_hints,
     Iterable,
@@ -16,7 +18,6 @@ from pandas import DataFrame, Index, Series
 
 from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
-from src.data_backend.sqlite3_backend import Sqlite3Backend
 from src.data_store.column import Column, ColumnAlias
 from src.database.data_token import DataToken
 
@@ -24,14 +25,17 @@ T = TypeVar("T", bound="DataStore")
 
 
 class DataStore:
+    version: ClassVar[int]
+
     _data_backend: DataBackend
     columns: list[ColumnAlias]
     index: Index
     _loc: DataStore._LocIndexer[T]
     _iloc: DataStore._ILocIndexer[T]
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, version: int = 1) -> None:
         super(DataStore, cls).__init_subclass__()
+        cls.version = version
         for name, col in cls._parse_columns().items():
             col._name = name
             setattr(cls, name, col)
@@ -58,8 +62,10 @@ class DataStore:
         self._iloc = DataStore._ILocIndexer[T](self)
 
     @classmethod
-    def link(cls: Type[T], data_token: DataToken, read_only: bool = True) -> T:
-        return cls._from_data_backend(Sqlite3Backend(data_token, read_only))
+    def link(
+        cls: Type[T], database: D, data_token: DataToken, read_only: bool = True
+    ) -> T:
+        return cls._from_data_backend(database.backend(data_token, read_only))
 
     @classmethod
     def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:
@@ -189,31 +195,46 @@ class DataStore:
     def set_index(self: T, column: Union[str, Iterable]) -> T:
         return self._new_data_copy(self._data_backend.set_index(column))
 
-    def reset_index(self: T, drop: bool = True) -> T:
+    def reset_index(self: T, drop: bool = False) -> T:
         return self._new_data_copy(self._data_backend.reset_index(drop=drop))
 
     @classmethod
-    def builder(
-        cls: Type[T], **column_data: dict[str, Column]
-    ) -> DataStore._Builder[T]:
-        return DataStore._Builder[cls](cls, **column_data)
+    def concat(cls: T, all_data_stores: list[T], ignore_index: bool = False) -> T:
+        all_backends = [store._data_backend for store in all_data_stores]
+        return cls._new_data_copy(
+            cls._data_backend.concat(all_backends, ignore_index=ignore_index)
+        )
+
+    @classmethod
+    def builder(cls: Type[T]) -> DataStore._Builder[T]:
+        return DataStore._Builder[cls](cls)
 
     class _Builder(Generic[T]):
         _store_class: Type[T]
         _column_data: dict[str, Column]
+        _row_data: list[dict[str, any]]
 
-        def __init__(
-            self, store_class: Type[T], **column_data: dict[str, Column]
-        ) -> None:
+        def __init__(self, store_class: Type[T]) -> None:
             self._store_class = store_class
-            self._column_data = column_data
+            self._column_data = {}
+            self._row_data = []
 
-        def append(self, column_name: str, column_data) -> DataStore._Builder[T]:
+        def append_column(
+            self, column_name: str, column_data: Column
+        ) -> DataStore._Builder[T]:
+            if len(self._row_data) > 0:
+                raise UnsupportedOperation("Cannot insert column when row data present")
             self._column_data[str(column_name)] = column_data
             return self
 
         def __setitem__(self, column_name: str, column_data) -> None:
             self._column_data[str(column_name)] = column_data
+
+        def append_row(self, **row_data: any) -> DataStore._Builder[T]:
+            if len(self._column_data) > 0:
+                raise UnsupportedOperation("Cannot insert row data when column data present")
+            self._row_data.append(row_data)
+            return self
 
         def build(self) -> T:
             return self._store_class(**self._column_data)
@@ -239,3 +260,8 @@ class DataStore:
             return self._data_store._new_data_copy(
                 self._data_store._data_backend.loc[item]
             )
+
+
+from src.database.database import Database
+
+D = TypeVar("D", bound="Database")

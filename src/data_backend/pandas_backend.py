@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, cast, Iterable, Optional, Union
 
+import pandas as pd
 from pandas import Index
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
@@ -107,6 +108,13 @@ class PandasBackend(DataBackend):
 
     def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
         return PandasBackend(self._data.reset_index(drop=drop))
+
+    @classmethod
+    def concat(
+        cls: type[PandasBackend], all_backends: list[PandasBackend], ignore_index: bool = False
+    ) -> PandasBackend:
+        all_data = [backend._data for backend in all_backends]
+        return cls(pd.concat(all_data, ignore_index=ignore_index))
 
     def __str__(self) -> str:
         if type(self._data) == Series:
