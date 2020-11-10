@@ -1,3 +1,6 @@
+from __future__ import annotations
+from src.data_store.query_type import EqualsType, QueryType
+
 from types import GenericAlias
 from typing import (
     Any,
@@ -11,15 +14,14 @@ from typing import (
     Union,
 )
 
-from hamcrest.core.core.isinstanceof import instance_of
 import numpy as np
-from numpy.lib.function_base import iterable
 from pandas import Index, Series
 
 from src.data_store.data_type import DataType, Object
 
 T = TypeVar("T")
 NT = TypeVar("NT")
+DT = TypeVar("DT", bound=DataType)
 Indexible = Union[Any, list, Index]
 
 
@@ -39,11 +41,7 @@ class Column(Generic[T]):
         else:
             self.series = Series(dtype="object")
 
-        self.dtype = (
-            self._series_dtype()
-            if dtype is None
-            else DataType(dtype)
-        )
+        self.dtype = self._series_dtype() if dtype is None else DataType(dtype)
 
         if data is not None:
             self._validate_column()
@@ -165,3 +163,24 @@ class ColumnAlias:
         if self._name is not None:
             repr_def = f"{self._name}: {repr_def}"
         return repr_def
+
+    def __eq__(self, o: object) -> ColumnQuery:
+        return ColumnQuery(EqualsType(), self, o)
+
+
+class ColumnQuery:
+    query_type: QueryType
+    column_alias: ColumnAlias
+    target: DT
+
+    def __init__(
+        self, query_type: QueryType, column_alias: ColumnAlias, target: object
+    ) -> None:
+        try:
+            DataType(type(target))
+        except Exception as e:
+            raise TypeError("Cannot query column data against non-tanuki DataType", e)
+
+        self.query_type = query_type
+        self.column_alias = column_alias
+        self.target = cast(DT, target)

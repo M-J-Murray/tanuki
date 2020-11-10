@@ -3,6 +3,7 @@ from io import UnsupportedOperation
 
 from typing import (
     Any,
+    Generator,
     cast,
     ClassVar,
     Generic,
@@ -23,8 +24,13 @@ from src.database.data_token import DataToken
 
 T = TypeVar("T", bound="DataStore")
 
+class MetaDataStore(type):
+    
+    def __new__(cls, *args, **kargs) -> Any:
+        return super(MetaDataStore, cls).__new__(cls, *args)
 
-class DataStore:
+
+class DataStore(metaclass=MetaDataStore):
     version: ClassVar[int]
 
     _data_backend: DataBackend
@@ -33,7 +39,7 @@ class DataStore:
     _loc: DataStore._LocIndexer[T]
     _iloc: DataStore._ILocIndexer[T]
 
-    def __init_subclass__(cls, version: int = 1) -> None:
+    def __init_subclass__(cls: Type[T], version: int = 1) -> None:
         super(DataStore, cls).__init_subclass__()
         cls.version = version
         for name, col in cls._parse_columns().items():
@@ -102,7 +108,7 @@ class DataStore:
             )
         return columns
 
-    def _parse_active_columns(self) -> dict[str, ColumnAlias]:
+    def _parse_active_columns(self: T) -> dict[str, ColumnAlias]:
         columns = self._parse_columns()
         backend_columns = [col for col in self._data_backend.columns if col in columns]
         active_columns = {}
@@ -110,7 +116,7 @@ class DataStore:
             active_columns[col] = columns[col]
         return active_columns
 
-    def _validate_data_frame(self) -> None:
+    def _validate_data_frame(self: T) -> None:
         columns = self._parse_active_columns()
 
         invalid_types = []
@@ -125,7 +131,7 @@ class DataStore:
         if len(invalid_types) != 0:
             raise TypeError(f"Invalid types provided for: {invalid_types}")
 
-    def _attach_columns(self) -> None:
+    def _attach_columns(self: T) -> None:
         columns = self._parse_columns()
         active_columns = self._parse_active_columns()
         for col in columns:
@@ -139,45 +145,45 @@ class DataStore:
         instance = cls(index=data_backend.index, **data_backend.to_dict("list"))
         return instance
 
-    def __contains__(self, key):
+    def __contains__(self: T, key):
         return str(key) in self._parse_columns()
 
-    def __str__(self) -> str:
+    def __str__(self: T) -> str:
         if len(self._data_backend) == 0:
             return f"Empty {self.__class__.__name__}"
         else:
             return f"{self.__class__.__name__}{self._data_backend}"
 
-    def __repr__(self) -> str:
+    def __repr__(self: T) -> str:
         return str(self)
 
-    def __eq__(self, other):
+    def __eq__(self: T, other):
         if type(other) is not type(self):
             return False
         oc = cast(DataStore, other)
         return self._data_backend == oc._data_backend
 
-    def equals(self, other):
+    def equals(self: T, other):
         if type(other) is not type(self):
             return False
         oc = cast(DataStore, other)
         return self._data_backend.equals(oc._data_backend)
 
-    def __len__(self):
+    def __len__(self: T):
         return len(self._data_backend)
 
-    def __iter__(self):
+    def __iter__(self: T):
         for column in self._data_backend:
             yield self._active_columns[column]
 
-    def iterrows(self):
+    def iterrows(self: T) -> Generator[tuple[int, T], None, None]:
         for i, row in self._data_backend.iterrows():
             yield (i, self._new_data_copy(row))
 
-    def itertuples(self):
+    def itertuples(self: T) -> Generator[tuple]:
         return self._data_backend.itertuples()
 
-    def __getitem__(self, item: str) -> Column:
+    def __getitem__(self: T, item: str) -> Column:
         if item not in self._parse_columns():
             raise ValueError(
                 f"Could not match '{item}' to {self.__class__.__name__} column"
@@ -187,7 +193,7 @@ class DataStore:
         else:
             return self._parse_columns()[item](self._data_backend[item])
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self: T, name: str) -> Any:
         raise ValueError(
             f"Could not match '{name}' to {self.__class__.__name__} column"
         )
@@ -232,7 +238,9 @@ class DataStore:
 
         def append_row(self, **row_data: any) -> DataStore._Builder[T]:
             if len(self._column_data) > 0:
-                raise UnsupportedOperation("Cannot insert row data when column data present")
+                raise UnsupportedOperation(
+                    "Cannot insert row data when column data present"
+                )
             self._row_data.append(row_data)
             return self
 

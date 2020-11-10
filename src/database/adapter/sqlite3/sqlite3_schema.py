@@ -1,4 +1,4 @@
-from src.database.adapter.database_schema import DatabaseSchema, SchemaDefinition
+from src.database.adapter.database_schema import DatabaseSchema
 from typing import Type, TypeVar
 from src.data_store.data_store import DataStore
 
@@ -13,9 +13,6 @@ class Sqlite3Schema(DatabaseSchema):
         self._columns = []
         for name, alias in store_cols:
             self._columns.append(f"{name} {alias}")
-
-    def schema_definition(self) -> SchemaDefinition:
-        pass
 
     def __str__(self) -> str:
         return "\n".join(self._columns)

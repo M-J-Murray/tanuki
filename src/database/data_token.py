@@ -12,3 +12,12 @@ class DataToken:
 
     def to_sql(self: "DataToken") -> str:
         return f"{self.data_group}.{self.table_name}"
+
+    def __str__(self: "DataToken") -> str:
+        return f"{self.data_group}.{self.table_name}"
+
+    def __repr__(self: "DataToken") -> str:
+        return str(self)
+
+    def __hash__(self: "DataToken") -> int:
+        return hash(str(self))
