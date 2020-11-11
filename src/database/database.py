@@ -2,14 +2,14 @@ from __future__ import annotations
 from io import UnsupportedOperation
 
 import pickle
+from src.data_store.query_type import QueryType
 from types import TracebackType, new_class
 from typing import Any, Generic, Optional, Type, TypeVar
 
 from pandas import Index
 
-from src.data_backend.data_backend import DataBackend
 from src.data_backend.database_backend import DatabaseBackend
-from src.data_store.column import Column, ColumnQuery
+from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Bytes
 from src.database.adapter.database_adapter import DatabaseAdapter
@@ -104,9 +104,9 @@ class DataStoreDefinition(DataStore, version=1):
 
 
 class DatabaseCorruptionError(IOError):
-    def __init__(self, reason: str) -> None:
+    def __init__(self, reason: str, *exception: Exception) -> None:
         super(DatabaseCorruptionError, self).__init__(
-            f"Database in corrupted state: {reason}"
+            f"Database in corrupted state: {reason}", *exception
         )
 
 
@@ -122,11 +122,11 @@ class Database:
     query: QueryAlias[T]
 
     def __init__(self, database_adapter: DatabaseAdapter) -> None:
+        self.query = Database.QueryAlias[T](self)
         self._db_adapter = database_adapter
         if not self._has_reference_tables():
             self._setup_reference_tables()
         self._validate_reference_tables()
-        self.query = Database.QueryAlias[T](self)
 
     @staticmethod
     def backend(data_token: DataToken, read_only: bool = True) -> DatabaseBackend:
@@ -138,15 +138,56 @@ class Database:
         ) and self._db_adapter.has_table(DataStoreReference.data_token)
 
     def _setup_reference_tables(self):
+        if not self._db_adapter.has_group(PUBLIC_GROUP):
+            self._db_adapter.create_group(PUBLIC_GROUP)
         self._db_adapter.create_table(TableReference.data_token, TableReference)
         self._db_adapter.create_table(DataStoreReference.data_token, DataStoreReference)
-        self._register_table(TableReference.data_token)
-        self._register_table(DataStoreReference.data_token)
+        self._register_table(TableReference.data_token, TableReference)
+        self._register_table(DataStoreReference.data_token, DataStoreReference)
         self._register_data_store_type(TableReference)
         self._register_data_store_type(DataStoreReference)
 
     def _validate_reference_tables(self):
-        pass
+        if not self._db_adapter.has_table(TableReference.data_token):
+            raise DatabaseCorruptionError("TableReference table is missing")
+        if not self._db_adapter.has_table(DataStoreReference.data_token):
+            raise DatabaseCorruptionError("DataStoreReference table is missing")
+
+        exceptions = []
+        error_messages = []
+        for data_token in self.list_tables():
+            try:
+                store_type, store_version = self._table_data_store_type_version(
+                    data_token
+                )
+                (
+                    reference_token,
+                    definition_version,
+                ) = self._definition_reference_version(store_type, store_version)
+                store_definition = self._data_store_definition(
+                    reference_token, definition_version
+                )
+                if len(store_definition) == 0:
+                    raise DatabaseCorruptionError(
+                        f"{data_token} data store type reference empty"
+                    )
+
+                type_class = store_definition.store_class(store_type, store_version)
+                if not issubclass(DataStore, type_class):
+                    raise DatabaseCorruptionError(
+                        f"Recieved invalid data store class for {data_token}"
+                    )
+
+            except Exception as e:
+                exceptions.append(e)
+                error_messages.append(f"{data_token}: {e}")
+
+        if len(exceptions) > 0:
+            error_message = (
+                f"The following exception occured when validating the database state:\n"
+                + "\n".join(error_messages)
+            )
+            raise DatabaseCorruptionError(error_message, *exceptions)
 
     def _register_table(self, data_token: DataToken, data_store_type: Type[T]) -> None:
         if not self.has_table(data_token):
@@ -167,6 +208,8 @@ class Database:
             )
 
     def _create_table(self, data_token: DataToken, data_store_type: Type[T]) -> None:
+        if not self.has_group(data_token.data_group):
+            self._db_adapter.create_group(data_token.data_group)
         self._db_adapter.create_table(data_token, data_store_type)
         self._register_table(data_token)
         self._register_data_store_type(data_store_type)
@@ -269,9 +312,10 @@ class Database:
     def _query(
         self: Database,
         data_token: DataToken,
-        column_query: Optional[ColumnQuery] = None,
+        query_type: Optional[QueryType] = None,
+        columns: Optional[list[str]] = None,
     ) -> T:
-        table_data = self._db_adapter.query(data_token, column_query)
+        table_data = self._db_adapter.query(data_token, query_type, columns)
         store_type, store_version = self._table_data_store_type_version(data_token)
         reference_token, definition_version = self._definition_reference_version(
             store_type, store_version
@@ -326,6 +370,23 @@ class Database:
         self._db_adapter.stop()
 
     class QueryAlias(Generic[T]):
+        """Query Database
+
+        Parameters
+        ----------
+        data_token : DataToken
+            database table and group
+        query_type : Optional[QueryType], optional
+            to query the data, by default None
+        columns : Optional[list[str]], optional
+            specific columns expected as output, by default None
+
+        Returns
+        -------
+        T
+            The queried data in the expected DataStore class
+        """
+
         _database: Database
         _data_store_type: Type[T]
 
@@ -341,6 +402,25 @@ class Database:
             return Database.QueryAlias[T](self._database, data_store_type)
 
         def __call__(
-            self, data_token: DataToken, column_query: Optional[ColumnQuery] = None
+            self,
+            data_token: DataToken,
+            query_type: Optional[QueryType] = None,
+            columns: Optional[list[str]] = None,
         ) -> T:
-            return self._database._query(data_token, column_query)
+            """Query Database
+
+            Parameters
+            ----------
+            data_token : DataToken
+                database table and group
+            query_type : Optional[QueryType], optional
+                to query the data, by default None
+            columns : Optional[list[str]], optional
+                specific columns expected as output, by default None
+
+            Returns
+            -------
+            T
+                The queried data in the expected DataStore class
+            """
+            return self._database._query(data_token, query_type, columns)

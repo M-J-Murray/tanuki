@@ -1,7 +1,8 @@
 from hamcrest import assert_that, equal_to, is_, is_in
 from pytest import fail
 
-from src.data_store.column import Column, ColumnAlias
+from src.data_store.column import Column
+from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Boolean, Int64, String
 

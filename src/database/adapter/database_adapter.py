@@ -1,20 +1,22 @@
 from __future__ import annotations
+from src.data_store.query_type import QueryType
 
-from typing import Generic, Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
-from src.data_store.column import ColumnQuery
 from src.data_store.data_store import DataStore
-from src.database.adapter.database_schema import DatabaseSchema
 from src.database.data_token import DataToken
 
 T = TypeVar("T", bound=DataStore)
 
 
 class DatabaseAdapter:
+    def has_group(self: DatabaseAdapter, data_group: str) -> bool:
+        ...
+
     def create_group(self: DatabaseAdapter, data_group: str) -> None:
         ...
 
-    def has_table(self: DatabaseAdapter, data_token: DataToken) -> None:
+    def has_table(self: DatabaseAdapter, data_token: DataToken) -> bool:
         ...
 
     def create_table(
@@ -29,8 +31,11 @@ class DatabaseAdapter:
         ...
 
     def query(
-        self: DatabaseAdapter, column_query: Optional[ColumnQuery] = None
-    ) -> DataStore:
+        self: DatabaseAdapter,
+        data_token: DataToken,
+        query_type: Optional[QueryType] = None,
+        columns: Optional[list[str]] = None,
+    ) -> list[tuple[Any, ...]]:
         ...
 
     def insert(

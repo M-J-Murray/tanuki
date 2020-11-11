@@ -1,11 +1,11 @@
 from __future__ import annotations
-from io import UnsupportedOperation
 
+from io import UnsupportedOperation
 from typing import (
     Any,
-    Generator,
     cast,
     ClassVar,
+    Generator,
     Generic,
     get_type_hints,
     Iterable,
@@ -19,18 +19,14 @@ from pandas import DataFrame, Index, Series
 
 from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
-from src.data_store.column import Column, ColumnAlias
+from src.data_store.column import Column
+from src.data_store.column_alias import ColumnAlias
 from src.database.data_token import DataToken
 
 T = TypeVar("T", bound="DataStore")
 
-class MetaDataStore(type):
-    
-    def __new__(cls, *args, **kargs) -> Any:
-        return super(MetaDataStore, cls).__new__(cls, *args)
 
-
-class DataStore(metaclass=MetaDataStore):
+class DataStore:
     version: ClassVar[int]
 
     _data_backend: DataBackend

@@ -129,12 +129,12 @@ class SqlStatement:
         return self
 
     def WHERE(
-        self: "SqlStatement", other: Optional["SqlStatement"] = None
+        self: "SqlStatement", other: Optional[str] = None
     ) -> "SqlStatement":
         if other is None:
             self._commands.append("WHERE")
         else:
-            self._commands.append(f"WHERE {other.compile()}")
+            self._commands.append(f"WHERE {other}")
         return self
 
     def LIMIT(self: "SqlStatement", limit: int) -> "SqlStatement":

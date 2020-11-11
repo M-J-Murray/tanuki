@@ -1,5 +1,4 @@
 from __future__ import annotations
-from src.data_store.query_type import EqualsType, QueryType
 
 from types import GenericAlias
 from typing import (
@@ -21,7 +20,6 @@ from src.data_store.data_type import DataType, Object
 
 T = TypeVar("T")
 NT = TypeVar("NT")
-DT = TypeVar("DT", bound=DataType)
 Indexible = Union[Any, list, Index]
 
 
@@ -31,6 +29,8 @@ class Column(Generic[T]):
 
     @classmethod
     def __class_getitem__(_, dtype: type) -> Type["Column"]:
+        from .column_alias import ColumnAlias
+
         return ColumnAlias(dtype)
 
     def __init__(
@@ -135,52 +135,3 @@ class Column(Generic[T]):
 
     def __repr__(self: "Column[T]") -> str:
         return str(self)
-
-
-class ColumnAlias:
-    _name: Optional[str]
-    dtype: DataType
-    __origin__: type = Column
-    __args__: tuple[type]
-    __parameters__: tuple[type]
-
-    def __init__(self, dtype: type, name: Optional[str] = None) -> None:
-        self.dtype = DataType(dtype)
-        self.__args__ = (self.dtype,)
-        self.__parameters__ = (self.dtype,)
-        self._name = name
-
-    def __call__(self, data: Optional[list] = None) -> Column:
-        return Column(data=data, dtype=self.dtype)
-
-    def __str__(self) -> str:
-        if self._name is None:
-            raise ValueError("Column name not set")
-        return self._name
-
-    def __repr__(self) -> str:
-        repr_def = f"{Column.__module__}.{Column.__name__}[{self.dtype.__name__}]"
-        if self._name is not None:
-            repr_def = f"{self._name}: {repr_def}"
-        return repr_def
-
-    def __eq__(self, o: object) -> ColumnQuery:
-        return ColumnQuery(EqualsType(), self, o)
-
-
-class ColumnQuery:
-    query_type: QueryType
-    column_alias: ColumnAlias
-    target: DT
-
-    def __init__(
-        self, query_type: QueryType, column_alias: ColumnAlias, target: object
-    ) -> None:
-        try:
-            DataType(type(target))
-        except Exception as e:
-            raise TypeError("Cannot query column data against non-tanuki DataType", e)
-
-        self.query_type = query_type
-        self.column_alias = column_alias
-        self.target = cast(DT, target)

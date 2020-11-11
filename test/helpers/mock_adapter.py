@@ -1,4 +1,5 @@
-from typing import TypeVar
+from src.data_store.query_type import QueryType
+from typing import Any, Optional, TypeVar
 
 from src.data_store.data_store import DataStore
 from src.database.adapter.database_adapter import DatabaseAdapter
@@ -13,8 +14,17 @@ class MockAdapter(DatabaseAdapter):
     def __init__(self) -> None:
         self.group_tables = {}
 
+    def has_group(self: "MockAdapter", data_group: str) -> bool:
+        return data_group in self.group_tables
+
     def create_group(self: "MockAdapter", data_group: str) -> None:
         self.group_tables[data_group] = {}
+
+    def has_table(self: "MockAdapter", data_token: DataToken) -> bool:
+        return (
+            self.has_group(data_token.data_group)
+            and data_token.table_name in self.group_tables[data_token.data_group]
+        )
 
     def create_table(
         self: "MockAdapter", data_token: DataToken, data_store_type: type[DataStore]
@@ -29,40 +39,10 @@ class MockAdapter(DatabaseAdapter):
     def drop_table(self: "MockAdapter", data_token: DataToken) -> None:
         del self.group_tables[data_token.data_group][data_token.table_name]
 
-    def insert(
+    def query(
         self: "MockAdapter",
         data_token: DataToken,
-        data_store: T,
-        ignore_index: bool = False,
-    ) -> None:
-        current_data = self.group_tables[data_token.data_group][data_token.table_name]
-        store_class = data_store.__class__
-        new_data = store_class.concat(
-            [current_data, data_store], ignore_index=ignore_index
-        )
-        self.group_tables[data_token.data_group][data_token.table_name] = new_data
-
-    def update(
-        self: "MockAdapter",
-        data_token: DataToken,
-        data_store: DataStore,
-        *columns: str
-    ) -> None:
-        ...
-
-    def upsert(
-        self: "DatabaseAdapter",
-        data_token: DataToken,
-        data_store: DataStore,
-        *columns: str
-    ) -> None:
-        ...
-
-    def query(self: "MockAdapter") -> DataStore:
-        ...
-
-    def delete(self: "MockAdapter") -> None:
-        ...
-
-    def stop(self: "MockAdapter") -> None:
-        ...
+        query_type: Optional[QueryType],
+        columns: Optional[list[str]],
+    ) -> list[tuple[Any, ...]]:
+        data = self.group_tables[data_token.data_group][data_token.table_name]
