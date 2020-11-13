@@ -1,4 +1,5 @@
 from __future__ import annotations
+from io import UnsupportedOperation
 
 from typing import Optional
 
@@ -33,6 +34,11 @@ class ColumnAlias:
         if self._name is not None:
             repr_def = f"{self._name}: {repr_def}"
         return repr_def
+
+    def __hash__(self) -> int:
+        if self._name is None:
+            raise UnsupportedOperation("Cannot hash Column outside of DataStore")
+        return hash(str(self))
 
     def __eq__(self, o: object) -> QueryType:
         return EqualsType(self, o)

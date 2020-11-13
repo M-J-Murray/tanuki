@@ -35,7 +35,7 @@ class DatabaseAdapter:
         data_token: DataToken,
         query_type: Optional[QueryType] = None,
         columns: Optional[list[str]] = None,
-    ) -> list[tuple[Any, ...]]:
+    ) -> list[tuple]:
         ...
 
     def insert(

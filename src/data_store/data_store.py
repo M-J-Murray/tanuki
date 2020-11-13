@@ -21,6 +21,8 @@ from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
+from src.data_store.data_type import Boolean
+from src.data_store.query_type import QueryType
 from src.database.data_token import DataToken
 
 T = TypeVar("T", bound="DataStore")
@@ -28,6 +30,7 @@ T = TypeVar("T", bound="DataStore")
 
 class DataStore:
     version: ClassVar[int]
+    columns: ClassVar[list[ColumnAlias]]
 
     _data_backend: DataBackend
     columns: list[ColumnAlias]
@@ -38,7 +41,9 @@ class DataStore:
     def __init_subclass__(cls: Type[T], version: int = 1) -> None:
         super(DataStore, cls).__init_subclass__()
         cls.version = version
+        cls.columns = []
         for name, col in cls._parse_columns().items():
+            cls.columns.append(col)
             col._name = name
             setattr(cls, name, col)
 
@@ -47,7 +52,7 @@ class DataStore:
     ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self._data_backend = PandasBackend(column_data, index)
+            self._data_backend = PandasBackend(column_data, index=index)
             self._validate_data_frame()
             self._attach_columns()
         else:
@@ -70,13 +75,29 @@ class DataStore:
         return cls._from_data_backend(database.backend(data_token, read_only))
 
     @classmethod
+    def from_rows(
+        cls: Type[T], data_rows: list[tuple], columns: Optional[list[str]] = None
+    ) -> T:
+        if columns is None:
+            columns = cls._parse_columns().keys()
+        else:
+            columns = [str(col) for col in columns]
+        data = DataFrame.from_records(data_rows, columns=columns)
+        return cls._from_data_backend(PandasBackend(data))
+
+    @classmethod
     def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:
         return cls._from_data_backend(PandasBackend(data))
+
+    def to_pandas(self: T) -> Union[Series, DataFrame]:
+        return self._data_backend.to_pandas()
 
     @classmethod
     def _from_data_backend(cls: Type[T], data_backend: DataBackend) -> T:
         instance = cls()
         instance._data_backend = data_backend
+        instance._validate_data_frame()
+        instance._attach_columns()
         instance._compile()
         return instance
 
@@ -87,6 +108,15 @@ class DataStore:
     @property
     def iloc(self: T) -> DataStore._ILocIndexer[T]:
         return self._iloc
+
+    def is_row(self: T) -> bool:
+        return self._data_backend.is_row()
+
+    def to_table(self: T) -> bool:
+        return self._data_backend.to_table()
+
+    def to_row(self: T) -> bool:
+        return self._data_backend.to_row()
 
     @classmethod
     def _parse_columns(cls) -> dict[str, ColumnAlias]:
@@ -106,7 +136,13 @@ class DataStore:
 
     def _parse_active_columns(self: T) -> dict[str, ColumnAlias]:
         columns = self._parse_columns()
-        backend_columns = [col for col in self._data_backend.columns if col in columns]
+        backend_columns = self._data_backend.columns
+        unmatched_columns = set(backend_columns) - columns.keys()
+        if len(unmatched_columns) > 0:
+            raise KeyError(
+                f"Data backend contains columns which are not supported by {self.__class__.__name__}"
+            )
+
         active_columns = {}
         for col in backend_columns:
             active_columns[col] = columns[col]
@@ -142,7 +178,7 @@ class DataStore:
         return instance
 
     def __contains__(self: T, key):
-        return str(key) in self._parse_columns()
+        return str(key) in self._all_columns
 
     def __str__(self: T) -> str:
         if len(self._data_backend) == 0:
@@ -179,15 +215,47 @@ class DataStore:
     def itertuples(self: T) -> Generator[tuple]:
         return self._data_backend.itertuples()
 
-    def __getitem__(self: T, item: str) -> Column:
-        if item not in self._parse_columns():
+    def _get_column(self: T, item: str) -> T:
+        if item not in self._all_columns:
             raise ValueError(
                 f"Could not match '{item}' to {self.__class__.__name__} column"
             )
-        elif item not in self._parse_active_columns():
+        elif item not in self._active_columns:
             return None
         else:
-            return self._parse_columns()[item](self._data_backend[item])
+            return self._all_columns()[item](self._data_backend[item])
+
+    def _get_columns(self: T, columns: list[str]) -> T:
+        missing_columns = self._active_columns.keys() - set(columns)
+        unused_columns = set(columns) - self._active_columns.keys()
+        errors = []
+        if len(missing_columns) > 0:
+            errors.append(f"Data Columns Missing: {missing_columns}")
+        if len(unused_columns) > 0:
+            errors.append(f"Unused Columns: {unused_columns}")
+        if len(errors) > 0:
+            raise ValueError(
+                "Could not query column data because:\n" + "\n".join(errors)
+            )
+
+        return self._new_data_copy(self._data_backend[columns])
+
+    def _compiled_query(self: T, query_type: QueryType) -> T:
+        return self._new_data_copy(self._data_backend.query(query_type))
+
+    def __getitem__(
+        self: T, item: Union[str, list[str], Column[bool], QueryType]
+    ) -> Union[Column, T]:
+        if type(item) is str or type(item) is ColumnAlias:
+            return self._get_column(str(item))
+        elif isinstance(item, Iterable) and (
+            type(next(iter(item))) is str or type(next(iter(item))) is ColumnAlias
+        ):
+            return self._get_columns([str(value for value in item)])
+        elif type(item) is QueryType:
+            return self._compiled_query(item)
+        else:
+            return self._new_data_copy(self._data_backend[item])
 
     def __getattr__(self: T, name: str) -> Any:
         raise ValueError(
@@ -214,12 +282,12 @@ class DataStore:
     class _Builder(Generic[T]):
         _store_class: Type[T]
         _column_data: dict[str, Column]
-        _row_data: list[dict[str, any]]
+        _row_data: dict[str, list]
 
         def __init__(self, store_class: Type[T]) -> None:
             self._store_class = store_class
             self._column_data = {}
-            self._row_data = []
+            self._row_data = {}
 
         def append_column(
             self, column_name: str, column_data: Column
@@ -237,11 +305,17 @@ class DataStore:
                 raise UnsupportedOperation(
                     "Cannot insert row data when column data present"
                 )
-            self._row_data.append(row_data)
+            for key, value in row_data.items():
+                if key not in self._row_data:
+                    self._row_data[key] = []
+                self._row_data[key].append(value)
             return self
 
         def build(self) -> T:
-            return self._store_class(**self._column_data)
+            if len(self._column_data) > 0:
+                return self._store_class(**self._column_data)
+            else:
+                return self._store_class(**self._row_data)
 
     class _ILocIndexer(Generic[T]):
         _data_store: T

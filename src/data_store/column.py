@@ -49,12 +49,13 @@ class Column(Generic[T]):
     @staticmethod
     def _determine_nested_dtype(data: Iterable) -> DataType:
         sample = next(iter(data))
+        stype = type(sample)
         if sample == data:
             return type(data)
-        elif isinstance(sample, Iterable):
+        elif stype is list or stype is set:
             nested_type = Column._determine_nested_dtype(sample)
         else:
-            nested_type = type(sample)
+            nested_type = stype
         return GenericAlias(type(data), nested_type)
 
     def _series_dtype(self: "Column[T]") -> DataType:
@@ -64,10 +65,11 @@ class Column(Generic[T]):
                 dtype = Object
             else:
                 sample = self.series.iloc[0]
-                if isinstance(sample, Iterable):
+                stype = type(sample)
+                if stype is list or stype is set:
                     dtype = self._determine_nested_dtype(sample)
                 else:
-                    dtype = type(sample)
+                    dtype = stype
 
         else:
             dtype = self.series.dtype

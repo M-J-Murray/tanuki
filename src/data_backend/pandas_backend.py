@@ -1,4 +1,5 @@
 from __future__ import annotations
+from io import UnsupportedOperation
 
 from typing import Any, cast, Iterable, Optional, Union
 
@@ -41,6 +42,9 @@ class PandasBackend(DataBackend):
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
+    def to_pandas(self) -> Union[Series, DataFrame]:
+        return self._data
+
     @property
     def columns(self) -> list[str]:
         if self.is_row():
@@ -56,6 +60,22 @@ class PandasBackend(DataBackend):
 
     def is_row(self) -> bool:
         return type(self._data) == Series
+
+    def to_table(self) -> PandasBackend:
+        if self.is_row():
+            return PandasBackend(DataFrame([self._data], columns=self._data.index))
+        else:
+            return PandasBackend(DataFrame(self._data))
+
+    def to_row(self) -> PandasBackend:
+        if self.is_row():
+            return PandasBackend(Series(self._data))
+        elif len(self) == 1:
+            return PandasBackend(self.iloc[0])
+        else:
+            raise UnsupportedOperation(
+                f"Cannot convert table with {len(self)} rows to singular row"
+            )
 
     @property
     def index(self) -> Index:
@@ -100,8 +120,14 @@ class PandasBackend(DataBackend):
         else:
             return Column(self._data[item])
 
-    def __setitem__(self, item: str, value: Column) -> Column:
-        self._data[item] = value.series
+    def __setitem__(self, item: str, value: Union[Any, Column]) -> Column:
+        if self.is_row():
+            if type(value) is Column:
+                self._data[item] = value.series.iloc[0]
+            else:
+                self._data[item] = value
+        else:
+            self._data[item] = value.series
 
     def set_index(self: PandasBackend, column: Union[str, Iterable]) -> PandasBackend:
         return PandasBackend(self._data.set_index(column))
@@ -111,7 +137,9 @@ class PandasBackend(DataBackend):
 
     @classmethod
     def concat(
-        cls: type[PandasBackend], all_backends: list[PandasBackend], ignore_index: bool = False
+        cls: type[PandasBackend],
+        all_backends: list[PandasBackend],
+        ignore_index: bool = False,
     ) -> PandasBackend:
         all_data = [backend._data for backend in all_backends]
         return cls(pd.concat(all_data, ignore_index=ignore_index))

@@ -1,4 +1,8 @@
 from abc import abstractclassmethod, abstractmethod, abstractproperty
+
+from pandas.core.frame import DataFrame
+from pandas.core.series import Series
+from src.data_store.query_type import QueryType
 from typing import Any, Generic, Iterable, Type, TypeVar, Union
 
 from pandas import Index
@@ -21,6 +25,10 @@ class ILocIndexer(Generic[B]):
 
 
 class DataBackend:
+
+    def to_pandas(self) -> Union[Series, DataFrame]:
+        ...
+
     @abstractproperty
     def columns(self) -> list[str]:
         ...
@@ -31,6 +39,14 @@ class DataBackend:
 
     @abstractmethod
     def is_row(self) -> bool:
+        ...
+
+    @abstractmethod
+    def to_table(self) -> B:
+        ...
+
+    @abstractmethod
+    def to_row(self) -> B:
         ...
 
     @abstractproperty
@@ -71,6 +87,10 @@ class DataBackend:
 
     @abstractmethod
     def __getitem__(self, item: str) -> Any:
+        ...
+
+    @abstractmethod
+    def query(self, query_type: QueryType) -> B:
         ...
 
     @abstractmethod
