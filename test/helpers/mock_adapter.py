@@ -72,3 +72,10 @@ class MockAdapter(DatabaseAdapter):
         if columns is not None:
             data = data[columns]
         return [row[1:] for row in data.itertuples()]
+
+    def delete(self: "MockAdapter", data_token: DataToken, criteria: QueryType) -> None:
+        data = self.group_tables[data_token.data_group][data_token.table_name]
+        query_compiler = PandasQueryCompiler(data)
+        query = query_compiler.compile(criteria)
+        remaining = data.drop(query)
+        self.group_tables[data_token.data_group][data_token.table_name] = remaining

@@ -71,7 +71,7 @@ class PandasBackend(DataBackend):
         if self.is_row():
             return PandasBackend(Series(self._data))
         elif len(self) == 1:
-            return PandasBackend(self.iloc[0])
+            return self.iloc[0]
         else:
             raise UnsupportedOperation(
                 f"Cannot convert table with {len(self)} rows to singular row"
@@ -93,13 +93,19 @@ class PandasBackend(DataBackend):
         if type(other) is not PandasBackend:
             return False
         oc = cast(PandasBackend, other)
-        return self._data == oc._data
+        if self.is_row() != oc.is_row():
+            return self.to_row()._data == oc.to_row()._data
+        else:
+            return self._data == oc._data
 
     def equals(self, other):
         if type(other) is not PandasBackend:
             return False
         oc = cast(PandasBackend, other)
-        return self._data.equals(oc._data)
+        if self.is_row() != oc.is_row():
+            return self.to_row()._data.equals(oc.to_row()._data)
+        else:
+            return self._data.equals(oc._data)
 
     def __len__(self):
         return len(self._data)

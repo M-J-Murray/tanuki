@@ -10,6 +10,12 @@ T = TypeVar("T", bound=DataStore)
 
 
 class DatabaseAdapter:
+    def commit(self: DatabaseAdapter) -> None:
+        ...
+
+    def rollback(self: DatabaseAdapter) -> None:
+        ...
+
     def has_group(self: DatabaseAdapter, data_group: str) -> bool:
         ...
 
@@ -56,7 +62,9 @@ class DatabaseAdapter:
     ) -> None:
         ...
 
-    def delete(self: DatabaseAdapter) -> None:
+    def delete(
+        self: DatabaseAdapter, data_token: DataToken, criteria: QueryType
+    ) -> None:
         ...
 
     def stop(self: DatabaseAdapter) -> None:

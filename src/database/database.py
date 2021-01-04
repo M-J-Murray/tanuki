@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from io import UnsupportedOperation
-from src.data_store.column import Column
 from types import TracebackType
 from typing import Any, Generic, Optional, Type, TypeVar
 
@@ -14,8 +13,8 @@ from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.data_token import DataToken
 
 from .reference_tables import (
-    DataStoreDefinition,
-    DataStoreReference,
+    StoreDefinition,
+    StoreReference,
     PROTECTED_GROUP,
     TableReference,
 )
@@ -27,6 +26,13 @@ class DatabaseCorruptionError(IOError):
     def __init__(self, reason: str, *exception: Exception) -> None:
         super(DatabaseCorruptionError, self).__init__(
             f"Database in corrupted state: {reason}", *exception
+        )
+
+
+class MissingGroupError(IOError):
+    def __init__(self, data_group: str) -> None:
+        super(MissingTableError, self).__init__(
+            f"Failed to find data group for {data_group}"
         )
 
 
@@ -64,36 +70,38 @@ class Database:
     def _has_reference_tables(self):
         return self._db_adapter.has_table(
             TableReference.data_token
-        ) and self._db_adapter.has_table(DataStoreReference.data_token)
+        ) and self._db_adapter.has_table(StoreReference.data_token)
 
     def _setup_reference_tables(self):
         if not self._db_adapter.has_group(PROTECTED_GROUP):
             self._db_adapter.create_group(PROTECTED_GROUP)
         self._db_adapter.create_table(TableReference.data_token, TableReference)
-        self._db_adapter.create_table(DataStoreReference.data_token, DataStoreReference)
+        self._db_adapter.create_table(StoreReference.data_token, StoreReference)
         self._register_table(TableReference.data_token, TableReference, protected=True)
-        self._register_table(
-            DataStoreReference.data_token, DataStoreReference, protected=True
-        )
-        self._register_data_store_type(DataStoreDefinition)
-        self._register_data_store_type(TableReference)
-        self._register_data_store_type(DataStoreReference)
+        self._register_table(StoreReference.data_token, StoreReference, protected=True)
+        self._register_store_class(StoreDefinition)
+        self._register_store_class(TableReference)
+        self._register_store_class(StoreReference)
 
     def _validate_reference_tables(self):
         if not self._db_adapter.has_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
-        if not self._db_adapter.has_table(DataStoreReference.data_token):
-            raise DatabaseCorruptionError("DataStoreReference table is missing")
+        if not self._db_adapter.has_table(StoreReference.data_token):
+            raise DatabaseCorruptionError("StoreReference table is missing")
 
         exceptions = []
         error_messages = []
         for data_token in self.list_tables():
             try:
+                if not self._db_adapter.has_group(data_token.data_group):
+                    raise MissingGroupError(data_token.data_group)
+                if not self._db_adapter.has_table(data_token):
+                    raise MissingTableError(data_token)
                 store_type, store_version = self._table_store_type_version(data_token)
                 token_version = self._definition_reference_version(
                     store_type, store_version
                 )
-                store_definition = self._data_store_definition(*token_version)
+                store_definition = self._store_definition(*token_version)
                 if len(store_definition) == 0:
                     raise DatabaseCorruptionError(
                         f"{data_token} data store type reference empty"
@@ -125,48 +133,42 @@ class Database:
             return data_token in table_ref.data_tokens()
 
     def _register_table(
-        self, data_token: DataToken, data_store_type: Type[T], protected: bool = False
+        self, data_token: DataToken, store_class: Type[T], protected: bool = False
     ) -> None:
         if not self._is_table_registered(data_token):
-            reference = TableReference.create_row(
-                data_token, data_store_type, protected
-            )
+            reference = TableReference.create_row(data_token, store_class, protected)
             self._db_adapter.insert(
                 TableReference.data_token, reference, ignore_index=True
             )
 
-    def _register_data_store_type(
-        self, data_store_type: Type[T]
-    ) -> None:
-        if not self._has_data_store_type(
-            data_store_type.__name__, data_store_type.version
-        ):
-            reference = DataStoreReference.create_row(data_store_type)
+    def _register_store_class(self, store_class: Type[T]) -> None:
+        if not self._has_store_type(store_class.__name__, store_class.version):
+            reference = StoreReference.create_row(store_class)
             self._db_adapter.insert(
-                DataStoreReference.data_token, reference, ignore_index=True
+                StoreReference.data_token, reference, ignore_index=True
             )
-            reference_token = DataStoreDefinition.data_token(data_store_type)
-            self._create_table(reference_token, data_store_type)
+            reference_token = StoreDefinition.data_token(store_class)
+            self._create_table(reference_token, store_class, protected=True)
             self._db_adapter.insert(
-                reference_token, DataStoreDefinition.from_type(data_store_type)
+                reference_token, StoreDefinition.from_type(store_class)
             )
 
     def _create_table(
-        self, data_token: DataToken, data_store_type: Type[T], protected: bool = False
+        self, data_token: DataToken, store_class: Type[T], protected: bool = False
     ) -> None:
         if not self.has_group(data_token.data_group):
             self._db_adapter.create_group(data_token.data_group)
-        self._db_adapter.create_table(data_token, data_store_type)
-        self._register_table(data_token, data_store_type, protected)
-        self._register_data_store_type(data_store_type)
+        self._db_adapter.create_table(data_token, store_class)
+        self._register_table(data_token, store_class, protected)
+        self._register_store_class(store_class)
 
     def _table_store_type_version(self, data_token: DataToken) -> tuple[str, int]:
         if not self._db_adapter.has_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
             columns = [
-                str(TableReference.data_store_type),
-                str(TableReference.data_store_version),
+                str(TableReference.store_type),
+                str(TableReference.store_version),
             ]
             table_rows = self._db_adapter.query(
                 TableReference.data_token,
@@ -200,28 +202,6 @@ class Database:
                 )
             return table_rows[0][0]
 
-    def _is_data_store_protected(self, store_name: str, store_version: int) -> bool:
-        if not self._has_data_store_type(store_name, store_version):
-            raise MissingDataStoreTypeError(store_name, store_version)
-        else:
-            query = (DataStoreReference.data_store_type == store_name) & (
-                DataStoreReference.data_store_version == store_version
-            )
-            table_rows = self._db_adapter.query(
-                DataStoreReference.data_token,
-                query,
-                [str(DataStoreReference.protected)],
-            )
-            if len(table_rows) == 0:
-                raise DatabaseCorruptionError(
-                    f"Data store definition {store_name} version {store_version} missing from DataStoreReference"
-                )
-            if len(table_rows) > 1:
-                raise DatabaseCorruptionError(
-                    f"Duplicate data store references found for {store_name} version {store_version}"
-                )
-            return table_rows[0][0]
-
     def has_table(self, data_token: DataToken) -> bool:
         return self._db_adapter.has_table(data_token)
 
@@ -229,7 +209,8 @@ class Database:
         if not self._db_adapter.has_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
-            table_data = self.query[TableReference](TableReference.data_token)
+            criteria = TableReference.protected == False
+            table_data = self.query[TableReference](TableReference.data_token, criteria)
             return TableReference.data_tokens(table_data)
 
     def has_group(self, data_group: str) -> bool:
@@ -239,7 +220,8 @@ class Database:
         if not self._db_adapter.has_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
-            data = self.query[TableReference](TableReference.data_token)
+            criteria = TableReference.protected == False
+            data = self.query[TableReference](TableReference.data_token, criteria)
             return list(dict.fromkeys(data.data_group.tolist()))
 
     def list_group_tables(self, data_group: str) -> list[DataToken]:
@@ -250,38 +232,38 @@ class Database:
             data = self.query[TableReference](TableReference.data_token, criteria)
             return data.data_tokens()
 
-    def _has_data_store_type(self, store_name: str, store_version: int):
-        type_versions = self._data_store_type_versions()
+    def _has_store_type(self, store_name: str, store_version: int):
+        type_versions = self._store_type_versions()
         return (
             store_name in type_versions and store_version in type_versions[store_name]
         )
 
-    def _data_store_type_versions(self) -> dict[str, set[int]]:
-        if not self._db_adapter.has_table(DataStoreReference.data_token):
-            raise DatabaseCorruptionError("DataStoreReference table is missing")
+    def _store_type_versions(self) -> dict[str, set[int]]:
+        if not self._db_adapter.has_table(StoreReference.data_token):
+            raise DatabaseCorruptionError("StoreReference table is missing")
         else:
-            data = self._db_adapter.query(DataStoreReference.data_token)
-            return DataStoreReference.data_store_versions(data)
+            data = self._db_adapter.query(StoreReference.data_token)
+            return StoreReference.store_versions(data)
 
     def _definition_reference_version(
         self, store_type: str, store_version: int
     ) -> tuple[DataToken, int]:
-        if not self._db_adapter.has_table(DataStoreReference.data_token):
-            raise DatabaseCorruptionError("DataStoreReference table is missing")
+        if not self._db_adapter.has_table(StoreReference.data_token):
+            raise DatabaseCorruptionError("StoreReference table is missing")
         else:
             columns = [
-                str(DataStoreReference.definition_reference),
-                str(DataStoreReference.definition_version),
+                str(StoreReference.definition_reference),
+                str(StoreReference.definition_version),
             ]
             table_rows = self._db_adapter.query(
-                DataStoreReference.data_token,
-                (DataStoreReference.data_store_type == store_type)
-                & (DataStoreReference.data_store_version == store_version),
+                StoreReference.data_token,
+                (StoreReference.store_type == store_type)
+                & (StoreReference.store_version == store_version),
                 columns,
             )
             if len(table_rows) == 0:
                 raise DatabaseCorruptionError(
-                    f"Data store definition {store_type} V{store_version} missing from DataStoreReference"
+                    f"Data store definition {store_type} V{store_version} missing from StoreReference"
                 )
             if len(table_rows) > 1:
                 raise DatabaseCorruptionError(
@@ -292,9 +274,9 @@ class Database:
                 table_rows[0][1],
             )
 
-    def _data_store_definition(
+    def _store_definition(
         self, reference_token: DataToken, definition_version: int
-    ) -> DataStoreDefinition:
+    ) -> StoreDefinition:
         if not self._db_adapter.has_table(reference_token):
             raise DatabaseCorruptionError(f"{reference_token} table is missing")
         else:
@@ -303,7 +285,7 @@ class Database:
                     f"Cannot deserialise data store type for version {definition_version}"
                 )
             def_rows = self._db_adapter.query(reference_token)
-            return DataStoreDefinition.from_rows(def_rows)
+            return StoreDefinition.from_rows(def_rows)
 
     def _query(
         self: Database,
@@ -318,11 +300,10 @@ class Database:
         reference_token, definition_version = self._definition_reference_version(
             store_type, store_version
         )
-        store_definition = self._data_store_definition(
-            reference_token, definition_version
-        )
+        store_definition = self._store_definition(reference_token, definition_version)
         store_class: Type[T] = store_definition.store_class(store_type, store_version)
-        return store_class.from_rows(table_data)
+        store = store_class.from_rows(table_data)
+        return store.to_table()
 
     def insert(
         self: Database, data_token: DataToken, data_store: T, ignore_index: bool = False
@@ -341,14 +322,50 @@ class Database:
     ) -> None:
         ...
 
-    def drop_indices(self: Database, data_token: DataToken, indices: Index) -> None:
+    def drop(self: Database, data_token: DataToken, indices: Index) -> None:
         ...
+
+    def _drop_store_type(self: Database, store_type: str, store_version: int) -> None:
+        reference_token, _ = self._definition_reference_version(
+            store_type, store_version
+        )
+        self._db_adapter.drop_table(reference_token)
+        criteria = (TableReference.table_name == reference_token.table_name) & (
+            TableReference.data_group == reference_token.data_group
+        )
+        self._db_adapter.delete(TableReference.data_token, criteria)
+        criteria = (StoreReference.store_type == store_type) & (
+            StoreReference.store_version == store_version
+        )
+        self._db_adapter.delete(StoreReference.version, criteria)
 
     def drop_table(self: Database, data_token: DataToken) -> None:
-        ...
+        if data_token.data_group == PROTECTED_GROUP:
+            raise UnsupportedOperation("Cannot delete from protected data group")
+        self._db_adapter.drop_table(data_token)
+        store_type, store_version = self._table_store_type_version(data_token)
+
+        store_type_version_count = len(
+            (TableReference.store_type == store_type)
+            & (TableReference.store_version == store_version)
+        )
+        version_count = self._db_adapter.query(
+            TableReference.data_token, store_type_version_count
+        )
+        if version_count == 1:
+            self._drop_store_type(store_type, store_version)
+
+        criteria = (TableReference.table_name == data_token.table_name) & (
+            TableReference.data_group == data_token.data_group
+        )
+        self._db_adapter.delete(TableReference.data_token, criteria)
 
     def drop_group(self: Database, data_group: str) -> None:
-        ...
+        if data_group == PROTECTED_GROUP:
+            raise UnsupportedOperation("Cannot delete protected data group")
+        for token in self.list_group_tables(data_group):
+            self.drop_table(token)
+        self._db_adapter.drop_group(data_group)
 
     def copy_table(
         self: Database, source_data_token: DataToken, target_data_token: DataToken
@@ -388,18 +405,18 @@ class Database:
         """
 
         _database: Database
-        _data_store_type: Type[T]
+        _store_class: Type[T]
 
         def __init__(
             self,
             data_base: Database,
-            data_store_type: Type[T] = Any,
+            store_class: Type[T] = Any,
         ) -> None:
             self._database = data_base
-            self._data_store_type = data_store_type
+            self._store_class = store_class
 
-        def __getitem__(self, data_store_type: Type[T]) -> Database.QueryAlias[T]:
-            return Database.QueryAlias[T](self._database, data_store_type)
+        def __getitem__(self, store_class: Type[T]) -> Database.QueryAlias[T]:
+            return Database.QueryAlias[T](self._database, store_class)
 
         def __call__(
             self,

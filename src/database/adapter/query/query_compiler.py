@@ -12,6 +12,9 @@ class QueryCompiler(Generic[T]):
     def NOT_EQUALS(self: "QueryCompiler", not_equals_type: NotEqualsType) -> T:
         ...
 
+    def COUNT(self: "QueryCompiler", count_type: CountType) -> T:
+        ...
+
     def AND(self: "QueryCompiler", and_type: AndType) -> T:
         ...
 
@@ -26,6 +29,7 @@ class QueryCompiler(Generic[T]):
 
 from src.data_store.query_type import (
     AndType,
+    CountType,
     EqualsType,
     NotEqualsType,
     OrType,

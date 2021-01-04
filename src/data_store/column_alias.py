@@ -40,8 +40,19 @@ class ColumnAlias:
             raise UnsupportedOperation("Cannot hash Column outside of DataStore")
         return hash(str(self))
 
-    def __eq__(self, o: object) -> QueryType:
+    def __eq__(self, o: object) -> EqualsType:
+        if getattr(o, '__module__', None) == "typing":
+            return False
         return EqualsType(self, o)
 
+    def __ne__(self, o: object) -> NotEqualsType:
+        return NotEqualsType(self, o)
 
-from .query_type import EqualsType, QueryType
+    def __len__(self) -> CountType:
+        return CountType(self)
+
+    def __int__(self) -> int:
+        return -1
+
+
+from .query_type import CountType, EqualsType, NotEqualsType

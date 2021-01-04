@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeVar, Union
+from typing import Any, Iterable, TypeVar, Union
 
 T = TypeVar("T")
 
 
-class QueryType:
+class QueryType(Iterable):
+
     def __eq__(self, o: object) -> EqualsType:
         return EqualsType(self, o)
 
     def __ne__(self, o: object) -> NotEqualsType:
         return NotEqualsType(self, o)
+
+    def __len__(self) -> CountType:
+        return CountType(self)
 
     def __and__(self, o: object) -> AndType:
         return AndType(self, o)
@@ -43,6 +47,24 @@ class NotEqualsType(QueryType):
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
         return query_compiler.NOT_EQUALS(NotEqualsType(a, b))
+
+
+@dataclass
+class CountType(QueryType):
+    a: Union[Iterable, ColumnAlias, QueryType]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        a = query_compiler.compile(self.a)
+        return query_compiler.COUNT(CountType(a))
+
+    def __len__(self) -> CountType:
+        return self
+
+    def __int__(self) -> CountType:
+        return self
+
+    def __index__(self) -> CountType:
+        return self
 
 
 @dataclass

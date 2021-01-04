@@ -78,10 +78,22 @@ class TestDataStore:
         except Exception as e:
             assert_that("Invalid types provided for: ['b']", is_in(str(e)))
 
-    def test_builder(self) -> None:
+    def test_columns_builder(self) -> None:
         builder = ExampleStore.builder()
         builder["a"] = ["a", "b", "c"]
-        builder.append("b", [1, 2, 3]).append(ExampleStore.c, [True, False, True])
+        builder.append_column("b", [1, 2, 3]).append_column(
+            ExampleStore.c, [True, False, True]
+        )
+        test_store = builder.build()
+        assert_that(test_store.a.tolist(), equal_to(["a", "b", "c"]))
+        assert_that(test_store.b.tolist(), equal_to([1, 2, 3]))
+        assert_that(test_store.c.tolist(), equal_to([True, False, True]))
+
+    def test_rows_builder(self) -> None:
+        builder = ExampleStore.builder()
+        builder.append_row(a="a", b=1, c=True)
+        builder.append_row(a="b", b=2, c=False)
+        builder.append_row(a="c", b=3, c=True)
         test_store = builder.build()
         assert_that(test_store.a.tolist(), equal_to(["a", "b", "c"]))
         assert_that(test_store.b.tolist(), equal_to([1, 2, 3]))
@@ -115,7 +127,7 @@ class TestDataStore:
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))
         test_slice = test_slice.set_index("b")
         assert_that(test_slice.index.tolist(), equal_to([1, 3]))
-        
+
     def test_get_index(self) -> None:
         assert_that(self.test_store.index.tolist(), equal_to([0, 1, 2]))
         test_slice = self.test_store.iloc[[0, 2]]

@@ -21,7 +21,6 @@ from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.data_type import Boolean
 from src.data_store.query_type import QueryType
 from src.database.data_token import DataToken
 
@@ -29,6 +28,8 @@ T = TypeVar("T", bound="DataStore")
 
 
 class DataStore:
+    registed_stores: ClassVar[dict[str, Type[T]]] = {}
+
     version: ClassVar[int]
     columns: ClassVar[list[ColumnAlias]]
 
@@ -46,6 +47,7 @@ class DataStore:
             cls.columns.append(col)
             col._name = name
             setattr(cls, name, col)
+        DataStore.registed_stores[cls.__name__] = cls
 
     def __init__(
         self: T, index: Optional[list] = None, **column_data: dict[str, Column]
@@ -72,7 +74,7 @@ class DataStore:
     def link(
         cls: Type[T], database: D, data_token: DataToken, read_only: bool = True
     ) -> T:
-        return cls._from_data_backend(database.backend(data_token, read_only))
+        return cls.from_backend(database.backend(data_token, read_only))
 
     @classmethod
     def from_rows(
@@ -83,17 +85,17 @@ class DataStore:
         else:
             columns = [str(col) for col in columns]
         data = DataFrame.from_records(data_rows, columns=columns)
-        return cls._from_data_backend(PandasBackend(data))
+        return cls.from_backend(PandasBackend(data))
 
     @classmethod
     def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:
-        return cls._from_data_backend(PandasBackend(data))
+        return cls.from_backend(PandasBackend(data))
 
     def to_pandas(self: T) -> Union[Series, DataFrame]:
         return self._data_backend.to_pandas()
 
     @classmethod
-    def _from_data_backend(cls: Type[T], data_backend: DataBackend) -> T:
+    def from_backend(cls: Type[T], data_backend: DataBackend) -> T:
         instance = cls()
         instance._data_backend = data_backend
         instance._validate_data_frame()
@@ -113,10 +115,10 @@ class DataStore:
         return self._data_backend.is_row()
 
     def to_table(self: T) -> bool:
-        return self._data_backend.to_table()
+        return self.from_backend(self._data_backend.to_table())
 
     def to_row(self: T) -> bool:
-        return self._data_backend.to_row()
+        return self.from_backend(self._data_backend.to_row())
 
     @classmethod
     def _parse_columns(cls) -> dict[str, ColumnAlias]:
@@ -172,11 +174,6 @@ class DataStore:
             else:
                 setattr(self, col, None)
 
-    @classmethod
-    def _new_data_copy(cls: type[T], data_backend: DataBackend) -> T:
-        instance = cls(index=data_backend.index, **data_backend.to_dict("list"))
-        return instance
-
     def __contains__(self: T, key):
         return str(key) in self._all_columns
 
@@ -190,16 +187,22 @@ class DataStore:
         return str(self)
 
     def __eq__(self: T, other):
-        if type(other) is not type(self):
+        if issubclass(type(other), DataStore):
             return False
         oc = cast(DataStore, other)
-        return self._data_backend == oc._data_backend
+        return (
+            other.__class__.__name__ == self.__class__.__name__
+            and self._data_backend == oc._data_backend
+        )
 
     def equals(self: T, other):
-        if type(other) is not type(self):
+        if not issubclass(type(other), DataStore):
             return False
         oc = cast(DataStore, other)
-        return self._data_backend.equals(oc._data_backend)
+        return (
+            other.__class__.__name__ == self.__class__.__name__
+            and self._data_backend.equals(oc._data_backend)
+        )
 
     def __len__(self: T):
         return len(self._data_backend)
@@ -210,7 +213,7 @@ class DataStore:
 
     def iterrows(self: T) -> Generator[tuple[int, T], None, None]:
         for i, row in self._data_backend.iterrows():
-            yield (i, self._new_data_copy(row))
+            yield (i, self.from_backend(row))
 
     def itertuples(self: T) -> Generator[tuple]:
         return self._data_backend.itertuples()
@@ -223,7 +226,7 @@ class DataStore:
         elif item not in self._active_columns:
             return None
         else:
-            return self._all_columns()[item](self._data_backend[item])
+            return self._all_columns[item](self._data_backend[item])
 
     def _get_columns(self: T, columns: list[str]) -> T:
         missing_columns = self._active_columns.keys() - set(columns)
@@ -238,10 +241,10 @@ class DataStore:
                 "Could not query column data because:\n" + "\n".join(errors)
             )
 
-        return self._new_data_copy(self._data_backend[columns])
+        return self.from_backend(self._data_backend[columns])
 
     def _compiled_query(self: T, query_type: QueryType) -> T:
-        return self._new_data_copy(self._data_backend.query(query_type))
+        return self.from_backend(self._data_backend.query(query_type))
 
     def __getitem__(
         self: T, item: Union[str, list[str], Column[bool], QueryType]
@@ -255,7 +258,7 @@ class DataStore:
         elif type(item) is QueryType:
             return self._compiled_query(item)
         else:
-            return self._new_data_copy(self._data_backend[item])
+            return self.from_backend(self._data_backend[item])
 
     def __getattr__(self: T, name: str) -> Any:
         raise ValueError(
@@ -263,15 +266,15 @@ class DataStore:
         )
 
     def set_index(self: T, column: Union[str, Iterable]) -> T:
-        return self._new_data_copy(self._data_backend.set_index(column))
+        return self.from_backend(self._data_backend.set_index(column))
 
     def reset_index(self: T, drop: bool = False) -> T:
-        return self._new_data_copy(self._data_backend.reset_index(drop=drop))
+        return self.from_backend(self._data_backend.reset_index(drop=drop))
 
     @classmethod
     def concat(cls: T, all_data_stores: list[T], ignore_index: bool = False) -> T:
         all_backends = [store._data_backend for store in all_data_stores]
-        return cls._new_data_copy(
+        return cls.from_backend(
             cls._data_backend.concat(all_backends, ignore_index=ignore_index)
         )
 
@@ -324,7 +327,7 @@ class DataStore:
             self._data_store = data_store
 
         def __getitem__(self, item: Union[int, list, slice]) -> T:
-            return self._data_store._new_data_copy(
+            return self._data_store.from_backend(
                 self._data_store._data_backend.iloc[item]
             )
 
@@ -335,7 +338,7 @@ class DataStore:
             self._data_store = data_store
 
         def __getitem__(self, item: Union[Any, list, slice]) -> T:
-            return self._data_store._new_data_copy(
+            return self._data_store.from_backend(
                 self._data_store._data_backend.loc[item]
             )
 
