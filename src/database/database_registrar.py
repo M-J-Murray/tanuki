@@ -131,7 +131,7 @@ class DatabaseRegistrar:
         source_data_token: DataToken,
         target_data_token: DataToken,
     ) -> None:
-        ...
+        raise NotImplementedError()
 
     def is_table_registered(self, data_token: DataToken) -> bool:
         if not self._db_adapter.has_table(data_token):

@@ -31,11 +31,11 @@ class MetaDataType(type):
 
     @abstractmethod
     def pdtype(cls) -> type:
-        ...
+        raise NotImplementedError()
 
     @abstractmethod
     def equivalents(cls) -> tuple[type]:
-        ...
+        raise NotImplementedError()
 
 
 class DataType(metaclass=MetaDataType):
@@ -67,7 +67,7 @@ class Boolean(DataType):
 
     @classmethod
     def equivalents(cls) -> tuple[type]:
-        return (np.dtype(np.bool), np.bool, bool)
+        return (np.dtype(np.bool), np.bool, np.bool_, bool)
 
 
 class Float64(DataType):

@@ -36,22 +36,22 @@ class DatabaseBackend(DataBackend):
         self._iloc = _ILocIndexer(self)
 
     def to_pandas(self) -> Union[Series, DataFrame]:
-        ...
+        raise NotImplementedError()
 
     def columns(self) -> list[str]:
-        ...
+        raise NotImplementedError()
 
     def to_dict(self, orient) -> dict[str, any]:
-        ...
+        raise NotImplementedError()
 
     def is_row(self) -> bool:
-        ...
+        raise NotImplementedError()
 
     def to_table(self) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
     def to_row(self) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
     @property
     def index(self) -> Index:
@@ -66,44 +66,44 @@ class DatabaseBackend(DataBackend):
         return self._iloc
 
     def __eq__(self, other):
-        ...
+        raise NotImplementedError()
 
     def equals(self, other):
-        ...
+        raise NotImplementedError()
 
     def __len__(self):
-        ...
+        raise NotImplementedError()
 
     def __iter__(self):
-        ...
+        raise NotImplementedError()
 
     def iterrows(self):
-        ...
+        raise NotImplementedError()
 
     def itertuples(self):
-        ...
+        raise NotImplementedError()
 
     def __getitem__(self, item: str) -> Any:
-        ...
+        raise NotImplementedError()
 
     def query(self, query_type: QueryType) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
     def __setitem__(self, item: str, value: Column) -> Column:
-        ...
+        raise NotImplementedError()
 
     def set_index(
         self: DatabaseBackend, column: Union[str, Iterable]
     ) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
     def reset_index(self: DatabaseBackend, drop: bool = False) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
     def append(
         clt: DatabaseBackend, new_backend: DatabaseBackend, ignore_index: bool = False
     ) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
     @classmethod
     def concat(
@@ -111,7 +111,7 @@ class DatabaseBackend(DataBackend):
         all_backends: list[DatabaseBackend],
         ignore_index: bool = False,
     ) -> DatabaseBackend:
-        ...
+        raise NotImplementedError()
 
 
 class _ILocIndexer(ILocIndexer[DatabaseBackend]):

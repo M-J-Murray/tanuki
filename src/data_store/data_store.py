@@ -21,6 +21,7 @@ from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
+from src.data_store.data_type import Boolean, DataType, String
 from src.data_store.query_type import QueryType
 from src.database.data_token import DataToken
 
@@ -35,9 +36,8 @@ class DataStore:
 
     _data_backend: DataBackend
     columns: list[ColumnAlias]
-    index: Index
-    _loc: DataStore._LocIndexer[T]
-    _iloc: DataStore._ILocIndexer[T]
+    loc: DataStore._LocIndexer[T]
+    iloc: DataStore._ILocIndexer[T]
 
     def __init_subclass__(
         cls: Type[T], version: int = 1, register: bool = True
@@ -72,9 +72,8 @@ class DataStore:
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
         self.columns = list(self._active_columns.values())
-        self.index = self._data_backend.index
-        self._loc = DataStore._LocIndexer[T](self)
-        self._iloc = DataStore._ILocIndexer[T](self)
+        self.loc = DataStore._LocIndexer[T](self)
+        self.iloc = DataStore._ILocIndexer[T](self)
 
     @classmethod
     def link(
@@ -113,12 +112,8 @@ class DataStore:
         return instance
 
     @property
-    def loc(self: T) -> DataStore._LocIndexer[T]:
-        return self._loc
-
-    @property
-    def iloc(self: T) -> DataStore._ILocIndexer[T]:
-        return self._iloc
+    def index(self: T) -> Index:
+        return self._data_backend.index
 
     def is_row(self: T) -> bool:
         return self._data_backend.is_row()
@@ -195,16 +190,16 @@ class DataStore:
     def __repr__(self: T) -> str:
         return str(self)
 
-    def __eq__(self: T, other):
-        if not issubclass(type(other), DataStore):
-            return False
-        oc = cast(DataStore, other)
-        return (
-            other.__class__.__name__ == self.__class__.__name__
-            and self._data_backend == oc._data_backend
-        )
+    def __eq__(self: T, other: Any) -> Any:
+        if issubclass(type(other), DataStore):
+            if not self.__class__.__name__ == other.__class__.__name__:
+                raise UnsupportedOperation(
+                    "Cannot compare different DataStore types: "
+                    + f"{self.__class__.__name__} vs {other.__class__.__name__}"
+                )
+        return self.from_backend(self._data_backend == other)
 
-    def equals(self: T, other):
+    def equals(self: T, other) -> bool:
         if not issubclass(type(other), DataStore):
             return False
         oc = cast(DataStore, other)
@@ -213,10 +208,11 @@ class DataStore:
             and self._data_backend.equals(oc._data_backend)
         )
 
-    def __len__(self: T):
+    def __len__(self: T) -> int:
         return len(self._data_backend)
 
-    def __iter__(self: T):
+    @classmethod
+    def __iter__(self: T) -> Generator[ColumnAlias, None, None]:
         for column in self._data_backend:
             yield self._active_columns[column]
 
@@ -238,36 +234,34 @@ class DataStore:
             return self._all_columns[item](self._data_backend[item])
 
     def _get_columns(self: T, columns: list[str]) -> T:
-        missing_columns = self._active_columns.keys() - set(columns)
-        unused_columns = set(columns) - self._active_columns.keys()
-        errors = []
-        if len(missing_columns) > 0:
-            errors.append(f"Data Columns Missing: {missing_columns}")
+        unused_columns = set(columns) - self._all_columns.keys()
         if len(unused_columns) > 0:
-            errors.append(f"Unused Columns: {unused_columns}")
-        if len(errors) > 0:
             raise ValueError(
-                "Could not query column data because:\n" + "\n".join(errors)
+                f"The following columns do not exist in {self.__class__.__name__}: {unused_columns}"
             )
-
-        return self.from_backend(self._data_backend[columns])
-
-    def _compiled_query(self: T, query_type: QueryType) -> T:
-        return self.from_backend(self._data_backend.query(query_type))
+        return self._data_backend.getitems(columns)
 
     def __getitem__(
-        self: T, item: Union[str, list[str], Column[bool], QueryType]
+        self: T, item: Union[ColumnAlias, list[ColumnAlias], list[bool], QueryType]
     ) -> Union[Column, T]:
         if type(item) is str or type(item) is ColumnAlias:
-            return self._get_column(str(item))
-        elif isinstance(item, Iterable) and (
-            type(next(iter(item))) is str or type(next(iter(item))) is ColumnAlias
-        ):
-            return self._get_columns([str(value for value in item)])
-        elif type(item) is QueryType:
-            return self._compiled_query(item)
+            result = self._get_column(str(item))
+        elif isinstance(item, Iterable):
+            value_type = DataType(type(next(iter(item))))
+            if value_type is String or value_type is ColumnAlias:
+                result = self._get_columns([str(value) for value in item])
+            elif value_type is Boolean:
+                result = self.from_backend(self._data_backend[item])
+            else:
+                result = self._data_backend[item]
+        elif issubclass(type(item), QueryType):
+            result = self._data_backend.query(item)
         else:
-            return self.from_backend(self._data_backend[item])
+            result = self._data_backend[item]
+
+        if issubclass(type(result), DataBackend):
+            result = self.from_backend(result)
+        return result
 
     def __getattr__(self: T, name: str) -> Any:
         raise ValueError(

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-from io import UnsupportedOperation
 from types import TracebackType
 from typing import cast, Optional, Type, TypeVar
 
 from pandas import Index
 
+from src.data_store.column_alias import ColumnAlias
 from src.data_store.query_type import QueryType
 
 from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
 from .database_registrar import DatabaseRegistrar
 from .db_exceptions import MissingTableError
-from .reference_tables import PROTECTED_GROUP, TableReference
 
 
 class Database:
@@ -43,10 +42,11 @@ class Database:
         store_type: Type[T],
         data_token: DataToken,
         query_type: Optional[QueryType] = None,
-        columns: Optional[list[str]] = None,
+        columns: Optional[list[ColumnAlias]] = None,
     ) -> T:
         if not self.has_table(data_token):
             raise MissingTableError(data_token)
+        columns = [str(col) for col in columns] if columns is not None else None
         table_data = self._db_adapter.query(data_token, query_type, columns)
         store_class: Type[T] = self._registrar.store_class(data_token)
         store = store_class.from_rows(table_data)
@@ -55,23 +55,31 @@ class Database:
     def insert(
         self: Database, data_token: DataToken, data_store: T, ignore_index: bool = False
     ) -> None:
-        if not self.has_table(data_token):
-            self._create_table(data_token, data_store.__class__)
+        if not self._registrar.has_table(data_token):
+            self._registrar.create_table(data_token, data_store.__class__)
         self._db_adapter.insert(data_token, data_store, ignore_index)
 
     def update(
-        self: Database, data_token: DataToken, data_store: T, *columns: str
+        self: Database,
+        data_token: DataToken,
+        data_store: T,
+        alignment_columns: list[ColumnAlias],
     ) -> None:
-        ...
+        if not self._registrar.has_table(data_token):
+            raise MissingTableError(data_token)
+        columns = [str(col) for col in alignment_columns]
+        self._db_adapter.update(data_token, data_store, columns)
 
     def upsert(
-        self: Database, data_token: DataToken, data_store: T, *columns: str
+        self: Database,
+        data_token: DataToken,
+        data_store: T,
+        *columns: list[ColumnAlias]
     ) -> None:
-        ...
+        raise NotImplementedError()
 
     def drop(self: Database, data_token: DataToken, indices: Index) -> None:
-        ...
-
+        raise NotImplementedError()
 
     def __enter__(self: Database) -> Database:
         return self

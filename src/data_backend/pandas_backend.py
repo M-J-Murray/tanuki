@@ -1,5 +1,7 @@
 from __future__ import annotations
 from io import UnsupportedOperation
+from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
+from src.data_store.query_type import QueryType
 
 from typing import Any, cast, Iterable, Optional, Union
 
@@ -122,11 +124,21 @@ class PandasBackend(DataBackend):
     def itertuples(self):
         return self._data.itertuples()
 
-    def __getitem__(self, item: str) -> Any:
+    def __getitem__(self, item: Union[str, list[bool]]) -> Any:
+        result = self._data[item]
+        if type(result) is DataFrame:
+            result = PandasBackend(result)
+        return result
+
+    def getitems(self, item: list[str]) -> PandasBackend:
+        return PandasBackend(self._data[item])
+
+    def query(self, query_type: QueryType) -> PandasBackend:
         if self.is_row():
-            return self._data[item]
-        else:
-            return Column(self._data[item])
+            raise ValueError("Cannot query from backend when data is in row format")
+        query_compiler = PandasQueryCompiler(self._data)
+        query = query_compiler.compile(query_type)
+        return PandasBackend(self._data[query])
 
     def __setitem__(self, item: str, value: Union[Any, Column]) -> Column:
         if self.is_row():

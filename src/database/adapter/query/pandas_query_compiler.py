@@ -7,6 +7,10 @@ from src.data_store.query_type import (
     AndType,
     CountType,
     EqualsType,
+    GreaterEqualType,
+    GreaterThanType,
+    LessEqualType,
+    LessThanType,
     NotEqualsType,
     OrType,
 )
@@ -34,6 +38,22 @@ class PandasQueryCompiler(QueryCompiler[DataFrame]):
         self: "PandasQueryCompiler", not_equals_type: NotEqualsType
     ) -> DataFrame:
         return self._get_value(not_equals_type.a) != self._get_value(not_equals_type.b)
+
+    def GREATER_THAN(
+        self: "PandasQueryCompiler", gt_type: GreaterThanType
+    ) -> DataFrame:
+        return self._get_value(gt_type.a) > self._get_value(gt_type.b)
+
+    def GREATER_EQUAL(
+        self: "PandasQueryCompiler", ge_type: GreaterEqualType
+    ) -> DataFrame:
+        return self._get_value(ge_type.a) >= self._get_value(ge_type.b)
+
+    def LESS_THAN(self: "PandasQueryCompiler", lt_type: LessThanType) -> DataFrame:
+        return self._get_value(lt_type.a) < self._get_value(lt_type.b)
+
+    def LESS_EQUAL(self: "PandasQueryCompiler", le_type: LessEqualType) -> DataFrame:
+        return self._get_value(le_type.a) <= self._get_value(le_type.b)
 
     def COUNT(self: "PandasQueryCompiler", count_type: CountType) -> DataFrame:
         return len(self._get_value(count_type.a))

@@ -1,9 +1,11 @@
+from _thread import start_new_thread
+
 from hamcrest import assert_that, equal_to, is_in
+from hamcrest.core.core.is_ import is_
 from pytest import fail
 
 from src.data_store.column import Column
 
-from _thread import start_new_thread
 
 class TestColumn:
     def test_type_casting(self) -> None:
@@ -34,7 +36,6 @@ class TestColumn:
             fail("Expected cast exception")
         except Exception as e:
             assert_that("Failed to cast 'String' to 'Float64'", is_in(str(e)))
-        
 
     def test_multi_threaded(self) -> None:
         data = [1, 2, 3]
@@ -49,3 +50,100 @@ class TestColumn:
             column = Column(data)
             assert_that(column.tolist(), equal_to(data))
         thread_running = False
+
+    def test_first(self) -> None:
+        column = Column[int]([1, 2, 3])
+        assert_that(column.first(), equal_to(1))
+
+    def test_equals(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(column1.equals(column1), equal_to(True))
+        assert_that(column1.equals(column2), equal_to(False))
+        assert_that(column1.equals(1), equal_to(False))
+
+    def test_eq(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(
+            Column[bool]([True, True, True]).equals(column1 == column1), is_(True)
+        )
+        assert_that(
+            Column[bool]([False, True, False]).equals(column1 == column2), is_(True)
+        )
+        assert_that(Column[bool]([False, True, False]).equals(column1 == 2), is_(True))
+
+    def test_ne(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(
+            Column[bool]([False, False, False]).equals(column1 != column1), is_(True)
+        )
+        assert_that(
+            Column[bool]([True, False, True]).equals(column1 != column2), is_(True)
+        )
+        assert_that(Column[bool]([True, True, False]).equals(column1 != 3), is_(True))
+
+    def test_gt(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(
+            Column[bool]([False, False, False]).equals(column1 > column1), is_(True)
+        )
+        assert_that(
+            Column[bool]([True, False, True]).equals(column2 > column1), is_(True)
+        )
+        assert_that(Column[bool]([True, False, True]).equals(column2 > 3), is_(True))
+
+    def test_ge(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(
+            Column[bool]([True, True, True]).equals(column1 >= column1), is_(True)
+        )
+        assert_that(
+            Column[bool]([False, True, False]).equals(column1 >= column2), is_(True)
+        )
+        assert_that(Column[bool]([False, False, True]).equals(column1 >= 3), is_(True))
+
+    def test_lt(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(
+            Column[bool]([False, False, False]).equals(column1 < column1), is_(True)
+        )
+        assert_that(
+            Column[bool]([True, False, True]).equals(column1 < column2), is_(True)
+        )
+        assert_that(Column[bool]([False, True, False]).equals(column2 < 3), is_(True))
+
+    def test_le(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        column2 = Column[int]([4, 2, 5])
+        assert_that(
+            Column[bool]([True, True, True]).equals(column1 <= column1), is_(True)
+        )
+        assert_that(
+            Column[bool]([True, True, True]).equals(column1 <= column2), is_(True)
+        )
+        assert_that(Column[bool]([False, True, False]).equals(column2 <= 3), is_(True))
+
+    def test_getitem(self) -> None:
+        column1 = Column[int]([1, 2, 3])
+        assert_that(column1[1], equal_to(2))
+        column2 = Column[int]([1, 2, 3], index=[1, 2, 3])
+        assert_that(column2[1], equal_to(1))
+
+    def test_iter(self) -> None:
+        column = Column[int]([1, 2, 3])
+        expected = [1, 2, 3]
+        for a, e in zip(column,expected):
+            assert_that(a, equal_to(e))
+
+    def test_str(self) -> None:
+        column = Column[int]([1, 2, 3])
+        assert_that(str(column), equal_to("0    1\n1    2\n2    3\ndtype: Int64"))
+
+    def test_repr(self) -> None:
+        column = Column[int]([1, 2, 3])
+        assert_that(repr(column), equal_to("0    1\n1    2\n2    3\ndtype: Int64"))

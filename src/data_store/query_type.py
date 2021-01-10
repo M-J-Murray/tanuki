@@ -14,6 +14,18 @@ class QueryType:
     def __ne__(self, o: object) -> NotEqualsType:
         return NotEqualsType(self, o)
 
+    def __gt__(self, o: object) -> GreaterThanType:
+        return GreaterThanType(self, o)
+
+    def __ge__(self, o: object) -> GreaterEqualType:
+        return GreaterEqualType(self, o)
+
+    def __lt__(self, o: object) -> LessThanType:
+        return LessThanType(self, o)
+
+    def __le__(self, o: object) -> LessEqualType:
+        return LessEqualType(self, o) 
+
     def __len__(self) -> CountType:
         return CountType(self)
 
@@ -24,7 +36,7 @@ class QueryType:
         return OrType(self, o)
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
-        ...
+        raise NotImplementedError()
 
 
 @dataclass
@@ -47,6 +59,49 @@ class NotEqualsType(QueryType):
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
         return query_compiler.NOT_EQUALS(NotEqualsType(a, b))
+
+
+@dataclass
+class GreaterThanType(QueryType):
+    a: Union[Any, ColumnAlias, QueryType]
+    b: Union[Any, ColumnAlias, QueryType]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        a = query_compiler.compile(self.a)
+        b = query_compiler.compile(self.b)
+        return query_compiler.GREATER_THAN(GreaterThanType(a, b))
+
+@dataclass
+class GreaterEqualType(QueryType):
+    a: Union[Any, ColumnAlias, QueryType]
+    b: Union[Any, ColumnAlias, QueryType]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        a = query_compiler.compile(self.a)
+        b = query_compiler.compile(self.b)
+        return query_compiler.GREATER_EQUAL(GreaterEqualType(a, b))
+
+
+@dataclass
+class LessThanType(QueryType):
+    a: Union[Any, ColumnAlias, QueryType]
+    b: Union[Any, ColumnAlias, QueryType]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        a = query_compiler.compile(self.a)
+        b = query_compiler.compile(self.b)
+        return query_compiler.LESS_THAN(LessThanType(a, b))
+
+@dataclass
+class LessEqualType(QueryType):
+    a: Union[Any, ColumnAlias, QueryType]
+    b: Union[Any, ColumnAlias, QueryType]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        a = query_compiler.compile(self.a)
+        b = query_compiler.compile(self.b)
+        return query_compiler.LESS_EQUAL(LessEqualType(a, b))
+
 
 
 @dataclass

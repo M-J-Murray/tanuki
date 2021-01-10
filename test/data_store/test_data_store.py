@@ -1,3 +1,6 @@
+from test.helpers.example_store import ExampleStore
+from typing import cast
+
 from hamcrest import assert_that, equal_to, is_, is_in
 from pytest import fail
 
@@ -6,10 +9,10 @@ from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Boolean, Int64, String
 
-from test.helpers.example_store import ExampleStore
-
 
 class TestDataStore:
+    test_store: ExampleStore
+
     @classmethod
     def setup_class(cls) -> None:
         cls.test_store = ExampleStore(
@@ -129,7 +132,27 @@ class TestDataStore:
         assert_that(example_row.a, equal_to(None))
         assert_that(example_row.b, equal_to(None))
         assert_that(example_row.c, equal_to(None))
-    
+
+    def test_get_columns(self) -> None:
+        test1 = self.test_store["a", "b"]
+        test2 = self.test_store[ExampleStore.a, ExampleStore.b]
+        test3 = self.test_store[[ExampleStore.a, ExampleStore.b]]
+        expected = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3])
+        assert_that(test1.equals(test2), is_(True))
+        assert_that(test2.equals(test3), is_(True))
+        assert_that(test3.equals(expected), is_(True))
+
+    def test_get_query_type(self) -> None:
+        query = ExampleStore.b > 1
+        actual = self.test_store[query]
+        expected = ExampleStore(a=["b", "c"], b=[2, 3], c=[False, True], index=[1, 2])
+        assert_that(actual.equals(expected), is_(True))
+
+    def test_get_mask(self) -> None:
+        mask = cast(Column, self.test_store.b > 1)
+        actual = self.test_store[mask.values]
+        expected = ExampleStore(a=["b", "c"], b=[2, 3], c=[False, True], index=[1, 2])
+        assert_that(actual.equals(expected), is_(True))
 
     def test_iloc(self) -> None:
         actual_series = self.test_store.iloc[0]
@@ -161,11 +184,32 @@ class TestDataStore:
         assert_that("a", is_in(self.test_store))
         assert_that(ExampleStore.a, is_in(self.test_store))
 
+    def test_equals(self) -> None:
+        stores_operator_equals = self.test_store == self.test_store
+        stores_functional_equals = self.test_store.equals(self.test_store)
+        assert_that(stores_operator_equals.all().all(), is_(True))
+        assert_that(stores_functional_equals, is_(True))
+
     def test_eq(self) -> None:
         stores_operator_equals = self.test_store == self.test_store
         stores_functional_equals = self.test_store.equals(self.test_store)
         assert_that(stores_operator_equals.all().all(), is_(True))
         assert_that(stores_functional_equals, is_(True))
+
+    def test_ne(self) -> None:
+        fail("Not implemented")
+
+    def test_gt(self) -> None:
+        fail("Not implemented")
+
+    def test_ge(self) -> None:
+        fail("Not implemented")
+
+    def test_lt(self) -> None:
+        fail("Not implemented")
+
+    def test_le(self) -> None:
+        fail("Not implemented")
 
     def test_len(self) -> None:
         assert_that(len(self.test_store), equal_to(3))

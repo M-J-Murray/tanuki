@@ -1,3 +1,4 @@
+from test.helpers.example_store import ExampleStore
 from test.helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
@@ -7,9 +8,6 @@ from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 from src.database.data_token import DataToken
 from src.database.database import Database
-
-from test.helpers.example_store import ExampleStore
-
 
 
 class TestDatabase:
@@ -21,11 +19,22 @@ class TestDatabase:
         data = ExampleStore(a="a", b=1, c=True)
         self.database.insert(ExampleStore.data_token, data)
         assert_that(self.database.has_table(ExampleStore.data_token), is_(True))
-        queried = self.database.query[ExampleStore](ExampleStore.data_token)
+        queried = self.database.query(ExampleStore, ExampleStore.data_token)
         assert_that(queried.equals(data), is_(True))
 
     def test_update(self) -> None:
-        fail("Not Implemented")
+        data = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        self.database.insert(ExampleStore.data_token, data)
+        assert_that(self.database.has_table(ExampleStore.data_token), is_(True))
+        queried = self.database.query(ExampleStore, ExampleStore.data_token)
+        assert_that(queried.equals(data), is_(True))
+        row_replacement = ExampleStore(a="b", b=2, c=True)
+        self.database.update(
+            ExampleStore.data_token, row_replacement, [ExampleStore.a, ExampleStore.b]
+        )
+        queried = self.database.query(ExampleStore, ExampleStore.data_token)
+        expected = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, True, True])
+        assert_that(queried.equals(expected), is_(True))
 
     def test_upsert(self) -> None:
         fail("Not Implemented")

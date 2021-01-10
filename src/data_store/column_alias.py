@@ -21,8 +21,8 @@ class ColumnAlias:
         self.__parameters__ = (self.dtype,)
         self._name = name
 
-    def __call__(self, data: Optional[list] = None) -> Column:
-        return Column(data=data, dtype=self.dtype)
+    def __call__(self, data: Optional[list] = None, index: Optional[list] = None) -> Column:
+        return Column(data=data, dtype=self.dtype, index=index)
 
     def __str__(self) -> str:
         if self._name is None:
@@ -48,11 +48,29 @@ class ColumnAlias:
     def __ne__(self, o: object) -> NotEqualsType:
         return NotEqualsType(self, o)
 
+    def __gt__(self, o: object) -> GreaterThanType:
+        return GreaterThanType(self, o)
+
+    def __ge__(self, o: object) -> GreaterEqualType:
+        return GreaterEqualType(self, o)
+
+    def __lt__(self, o: object) -> LessThanType:
+        return LessThanType(self, o)
+
+    def __le__(self, o: object) -> LessEqualType:
+        return LessEqualType(self, o) 
+
     def __len__(self) -> CountType:
         return CountType(self)
+
+    def __and__(self, o: object) -> AndType:
+        return AndType(self, o)
+
+    def __or__(self, o: object) -> OrType:
+        return OrType(self, o)
 
     def __int__(self) -> int:
         return -1
 
 
-from .query_type import CountType, EqualsType, NotEqualsType
+from .query_type import AndType, CountType, EqualsType, GreaterEqualType, GreaterThanType, LessEqualType, LessThanType, NotEqualsType, OrType
