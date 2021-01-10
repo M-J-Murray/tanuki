@@ -1,12 +1,9 @@
 from __future__ import annotations
+
+from typing import Optional, TypeVar
+
 from src.data_store.query_type import QueryType
-
-from typing import Any, Optional, TypeVar
-
-from src.data_store.data_store import DataStore
 from src.database.data_token import DataToken
-
-T = TypeVar("T", bound=DataStore)
 
 
 class DatabaseAdapter:
@@ -69,3 +66,8 @@ class DatabaseAdapter:
 
     def stop(self: DatabaseAdapter) -> None:
         ...
+
+
+from src.data_store.data_store import DataStore
+
+T = TypeVar("T", bound=DataStore)

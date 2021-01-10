@@ -6,7 +6,7 @@ from typing import Any, Iterable, TypeVar, Union
 T = TypeVar("T")
 
 
-class QueryType(Iterable):
+class QueryType:
 
     def __eq__(self, o: object) -> EqualsType:
         return EqualsType(self, o)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import closing
-from os import stat
 import sqlite3
 from sqlite3 import Connection
 from src.data_store.query_type import QueryType

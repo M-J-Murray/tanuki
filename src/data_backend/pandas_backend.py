@@ -35,8 +35,10 @@ class PandasBackend(DataBackend):
                 self._data = Series(data, index=index)
             elif len(values) > 1:
                 self._data = DataFrame(data, index=index)
-            else:
+            elif len(values) == 1:
                 self._data = DataFrame(data, index=index).iloc[0]
+            else:
+                self._data = DataFrame(data, index=index)
         else:
             raise ValueError(f"Received unexpected value type {type(data)}: {data}")
         self._loc = _LocIndexer(self)

@@ -28,7 +28,7 @@ class Column(Generic[T]):
     dtype: DataType
 
     @classmethod
-    def __class_getitem__(_, dtype: type) -> Type["Column"]:
+    def __class_getitem__(_, dtype: T) -> Type["Column"]:
         from .column_alias import ColumnAlias
 
         return ColumnAlias(dtype)

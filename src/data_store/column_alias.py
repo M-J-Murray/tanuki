@@ -12,8 +12,8 @@ class ColumnAlias:
     _name: Optional[str]
     dtype: DataType
     __origin__: type = Column
-    __args__: tuple[type]
-    __parameters__: tuple[type]
+    __args__: tuple[DataType]
+    __parameters__: tuple[DataType]
 
     def __init__(self, dtype: type, name: Optional[str] = None) -> None:
         self.dtype = DataType(dtype)

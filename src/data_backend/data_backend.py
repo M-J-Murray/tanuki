@@ -105,6 +105,10 @@ class DataBackend:
     def reset_index(self: B, drop: bool = False) -> B:
         ...
 
+    @abstractmethod
+    def append(clt: B, new_backend: B, ignore_index: bool = False) -> B:
+        ...
+
     @abstractclassmethod
     def concat(cls: Type[B], all_backends: list[B], ignore_index: bool = False) -> B:
         ...

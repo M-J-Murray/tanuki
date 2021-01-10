@@ -28,7 +28,7 @@ T = TypeVar("T", bound="DataStore")
 
 
 class DataStore:
-    registed_stores: ClassVar[dict[str, Type[T]]] = {}
+    registered_stores: ClassVar[dict[str, Type[T]]] = {}
 
     version: ClassVar[int]
     columns: ClassVar[list[ColumnAlias]]
@@ -39,15 +39,22 @@ class DataStore:
     _loc: DataStore._LocIndexer[T]
     _iloc: DataStore._ILocIndexer[T]
 
-    def __init_subclass__(cls: Type[T], version: int = 1) -> None:
+    def __init_subclass__(
+        cls: Type[T], version: int = 1, register: bool = True
+    ) -> None:
         super(DataStore, cls).__init_subclass__()
+        if register and cls.__name__ in DataStore.registered_stores:
+            raise TypeError(
+                f"Duplicate DataStores found {cls} vs {DataStore.registered_stores[cls.__name__]}"
+            )
         cls.version = version
         cls.columns = []
         for name, col in cls._parse_columns().items():
             cls.columns.append(col)
             col._name = name
             setattr(cls, name, col)
-        DataStore.registed_stores[cls.__name__] = cls
+        if register:
+            DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
         self: T, index: Optional[list] = None, **column_data: dict[str, Column]
@@ -56,13 +63,12 @@ class DataStore:
             column_data = {str(name): col for name, col in column_data.items()}
             self._data_backend = PandasBackend(column_data, index=index)
             self._validate_data_frame()
-            self._attach_columns()
         else:
             self._data_backend = PandasBackend(index=index)
-
         self._compile()
 
     def _compile(self: T) -> None:
+        self._attach_columns()
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
         self.columns = list(self._active_columns.values())
@@ -74,7 +80,11 @@ class DataStore:
     def link(
         cls: Type[T], database: D, data_token: DataToken, read_only: bool = True
     ) -> T:
-        return cls.from_backend(database.backend(data_token, read_only))
+        from src.data_backend.database_backend import DatabaseBackend
+
+        return cls.from_backend(
+            DatabaseBackend(database, data_token, read_only=read_only)
+        )
 
     @classmethod
     def from_rows(
@@ -99,7 +109,6 @@ class DataStore:
         instance = cls()
         instance._data_backend = data_backend
         instance._validate_data_frame()
-        instance._attach_columns()
         instance._compile()
         return instance
 
@@ -114,10 +123,10 @@ class DataStore:
     def is_row(self: T) -> bool:
         return self._data_backend.is_row()
 
-    def to_table(self: T) -> bool:
+    def to_table(self: T) -> T:
         return self.from_backend(self._data_backend.to_table())
 
-    def to_row(self: T) -> bool:
+    def to_row(self: T) -> T:
         return self.from_backend(self._data_backend.to_row())
 
     @classmethod
@@ -187,7 +196,7 @@ class DataStore:
         return str(self)
 
     def __eq__(self: T, other):
-        if issubclass(type(other), DataStore):
+        if not issubclass(type(other), DataStore):
             return False
         oc = cast(DataStore, other)
         return (
@@ -270,6 +279,11 @@ class DataStore:
 
     def reset_index(self: T, drop: bool = False) -> T:
         return self.from_backend(self._data_backend.reset_index(drop=drop))
+
+    def append(self: T, new_store: T, ignore_index: bool = False) -> T:
+        return self._data_backend.append(
+            new_store._data_backend, ignore_index=ignore_index
+        )
 
     @classmethod
     def concat(cls: T, all_data_stores: list[T], ignore_index: bool = False) -> T:

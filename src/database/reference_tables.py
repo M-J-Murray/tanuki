@@ -12,11 +12,10 @@ from src.database.data_token import DataToken
 T = TypeVar("T", bound=DataStore)
 
 
-PROTECTED_GROUP = "protected"
-
+PROTECTED_GROUP = "tanuki_protected"
 
 class TableReference(DataStore, version=1):
-    data_token = DataToken("table_reference", PROTECTED_GROUP)
+    data_token = DataToken(f"table_reference", PROTECTED_GROUP)
 
     table_name: Column[str]
     data_group: Column[str]
@@ -41,7 +40,7 @@ class TableReference(DataStore, version=1):
 
 
 class StoreReference(DataStore, version=1):
-    data_token = DataToken("store_reference", PROTECTED_GROUP)
+    data_token = DataToken(f"store_reference", PROTECTED_GROUP)
 
     store_type: Column[str]
     store_version: Column[int]
@@ -75,7 +74,7 @@ class StoreDefinition(DataStore, version=1):
     @staticmethod
     def data_token(store_type: Type[T]) -> DataToken:
         return DataToken(
-            f"{store_type.__name__}V{store_type.version}_definition",
+            f"{store_type.__name__}_v{store_type.version}_definition",
             PROTECTED_GROUP,
         )
 
@@ -96,8 +95,8 @@ class StoreDefinition(DataStore, version=1):
             annotations[name] = Column[pickle.loads(type)]
 
         functions = {}
-        if store_type in DataStore.registed_stores:
-            active_type = DataStore.registed_stores[store_type]
+        if store_type in DataStore.registered_stores:
+            active_type = DataStore.registered_stores[store_type]
             active_keys = set(dir(active_type)) - set(dir(DataStore))
             active_keys -= {str(col) for col in active_type.columns}
             active_keys.remove("columns")
@@ -110,5 +109,5 @@ class StoreDefinition(DataStore, version=1):
             ns |= functions
 
         return new_class(
-            store_type, (DataStore,), {"version": store_version}, add_columns
+            store_type, (DataStore,), {"version": store_version, "register": False}, add_columns
         )

@@ -10,6 +10,8 @@ import pandas as pd
 
 
 class MetaDataType(type):
+    _type_mappings: ClassVar[dict[type, DataType]] = {}
+
     def __call__(cls, data_type: type) -> type:
         if cls is TypeAlias:
             instance = TypeAlias.__new__(cls)
@@ -37,8 +39,7 @@ class MetaDataType(type):
 
 
 class DataType(metaclass=MetaDataType):
-    _type_mappings: ClassVar[dict[type, DataType]] = {}
-
+    
     def __eq__(cls, o: type) -> bool:
         return cls == o or cls.pdtype() == o
 

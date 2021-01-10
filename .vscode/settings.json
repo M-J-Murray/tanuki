@@ -10,6 +10,6 @@
         "test"
     ],
     "python.formatting.provider": "black",
-    "python.pythonPath": "/home/michael/.cache/pypoetry/virtualenvs/tanuki-cRa5dlQy-py3.9/",
+    "python.pythonPath": "/home/michael/.cache/pypoetry/virtualenvs/tanuki-cRa5dlQy-py3.9/bin/python",
 
 }

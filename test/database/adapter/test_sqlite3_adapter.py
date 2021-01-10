@@ -8,11 +8,8 @@ from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 from src.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
 
+from test.helpers.example_store import ExampleStore
 
-class ExampleStore(DataStore):
-    a: Column[str]
-    b: Column[int]
-    c: Column[bool]
 
 
 class TestSqlite3Adapter:

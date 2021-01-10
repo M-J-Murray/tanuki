@@ -6,11 +6,7 @@ from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Boolean, Int64, String
 
-
-class ExampleStore(DataStore):
-    a: Column[str]
-    b: Column[int]
-    c: Column[bool]
+from test.helpers.example_store import ExampleStore
 
 
 class TestDataStore:
@@ -112,6 +108,28 @@ class TestDataStore:
         assert_that(test_slice.a, equal_to("a"))
         assert_that(test_slice.b, equal_to(1))
         assert_that(test_slice.b, equal_to(True))
+
+    def test_empty_store(self) -> None:
+        example_row = ExampleStore(a=[], b=[], c=[])
+        assert_that(len(example_row.a), equal_to(0))
+        assert_that(len(example_row.b), equal_to(0))
+        assert_that(len(example_row.c), equal_to(0))
+
+        example_row = ExampleStore(b=[], c=[])
+        assert_that(example_row.a, equal_to(None))
+        assert_that(len(example_row.b), equal_to(0))
+        assert_that(len(example_row.c), equal_to(0))
+
+        example_row = ExampleStore(c=[])
+        assert_that(example_row.a, equal_to(None))
+        assert_that(example_row.b, equal_to(None))
+        assert_that(len(example_row.c), equal_to(0))
+
+        example_row = ExampleStore({})
+        assert_that(example_row.a, equal_to(None))
+        assert_that(example_row.b, equal_to(None))
+        assert_that(example_row.c, equal_to(None))
+    
 
     def test_iloc(self) -> None:
         actual_series = self.test_store.iloc[0]

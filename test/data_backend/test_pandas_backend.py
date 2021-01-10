@@ -1,7 +1,6 @@
 from hamcrest import assert_that, equal_to, is_, is_in
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
-from pytest import fail
 
 from src.data_backend.pandas_backend import PandasBackend
 
