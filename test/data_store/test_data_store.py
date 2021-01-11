@@ -2,6 +2,7 @@ from test.helpers.example_store import ExampleStore
 from typing import cast
 
 from hamcrest import assert_that, equal_to, is_, is_in
+from pandas import DataFrame
 from pytest import fail
 
 from src.data_store.column import Column
@@ -185,31 +186,78 @@ class TestDataStore:
         assert_that(ExampleStore.a, is_in(self.test_store))
 
     def test_equals(self) -> None:
-        stores_operator_equals = self.test_store == self.test_store
-        stores_functional_equals = self.test_store.equals(self.test_store)
-        assert_that(stores_operator_equals.all().all(), is_(True))
-        assert_that(stores_functional_equals, is_(True))
+        assert_that(self.test_store.equals(self.test_store), is_(True))
+        assert_that(self.test_store.equals(1), is_(False))
 
     def test_eq(self) -> None:
-        stores_operator_equals = self.test_store == self.test_store
-        stores_functional_equals = self.test_store.equals(self.test_store)
-        assert_that(stores_operator_equals.all().all(), is_(True))
-        assert_that(stores_functional_equals, is_(True))
+        result = self.test_store == self.test_store
+        assert_that(result.all().all(), is_(True))
+        result = self.test_store == "a"
+        expected = DataFrame(
+            {
+                "a": [True, False, False],
+                "b": [False, False, False],
+                "c": [False, False, False],
+            }
+        )
+        assert_that(expected.equals(result), is_(True))
 
     def test_ne(self) -> None:
-        fail("Not implemented")
+        result = self.test_store != self.test_store
+        assert_that(result.any().any(), is_(False))
+        result = self.test_store != "a"
+        expected = DataFrame(
+            {
+                "a": [False, True, True],
+                "b": [True, True, True],
+                "c": [True, True, True],
+            }
+        )
+        assert_that(expected.equals(result), is_(True))
 
     def test_gt(self) -> None:
-        fail("Not implemented")
+        result = self.test_store > self.test_store
+        assert_that(result.any().any(), is_(False))
+        try:
+            self.test_store > 1
+            fail("Expected exception")
+        except TypeError as e:
+            assert_that(
+                "'>' not supported between instances of 'str' and 'int'", is_in(str(e))
+            )
 
     def test_ge(self) -> None:
-        fail("Not implemented")
+        result = self.test_store >= self.test_store
+        assert_that(result.all().all(), is_(True))
+        try:
+            self.test_store >= 1
+            fail("Expected exception")
+        except TypeError as e:
+            assert_that(
+                "'>=' not supported between instances of 'str' and 'int'", is_in(str(e))
+            )
 
     def test_lt(self) -> None:
-        fail("Not implemented")
+        result = self.test_store < self.test_store
+        assert_that(result.any().any(), is_(False))
+        try:
+            self.test_store < 1
+            fail("Expected exception")
+        except TypeError as e:
+            assert_that(
+                "'<' not supported between instances of 'str' and 'int'", is_in(str(e))
+            )
 
     def test_le(self) -> None:
-        fail("Not implemented")
+        result = self.test_store <= self.test_store
+        assert_that(result.all().all(), is_(True))
+        try:
+            self.test_store <= 1
+            fail("Expected exception")
+        except TypeError as e:
+            assert_that(
+                "'<=' not supported between instances of 'str' and 'int'", is_in(str(e))
+            )
 
     def test_len(self) -> None:
         assert_that(len(self.test_store), equal_to(3))

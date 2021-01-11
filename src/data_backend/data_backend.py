@@ -24,7 +24,6 @@ class ILocIndexer(Generic[B]):
 
 
 class DataBackend:
-
     def to_pandas(self) -> Union[Series, DataFrame]:
         raise NotImplementedError()
 
@@ -61,11 +60,31 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def __eq__(self, other: Any) -> B:
+    def equals(self, other: Any) -> bool:
         raise NotImplementedError()
 
     @abstractmethod
-    def equals(self, other: Any) -> bool:
+    def __eq__(self, other: Any) -> DataFrame:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __ne__(self, other: Any) -> DataFrame:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __gt__(self, other: Any) -> DataFrame:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __ge__(self, other: Any) -> DataFrame:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __lt__(self, other: Any) -> DataFrame:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __le__(self, other: Any) -> DataFrame:
         raise NotImplementedError()
 
     @abstractmethod
@@ -77,11 +96,11 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def iterrows(self):
+    def iterrows(self) -> Generator[tuple[int, B], None, None]:
         raise NotImplementedError()
 
     @abstractmethod
-    def itertuples(self):
+    def itertuples(self) -> Generator[tuple, None, None]:
         raise NotImplementedError()
 
     @abstractmethod

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import cast, Optional, Type, TypeVar
+from typing import Any, Union, cast, Optional, Type, TypeVar
 
 from pandas import Index
 
@@ -11,7 +11,9 @@ from src.data_store.query_type import QueryType
 from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
 from .database_registrar import DatabaseRegistrar
-from .db_exceptions import MissingTableError
+from .db_exceptions import MissingGroupError, MissingTableError
+
+Indexible = Union[Any, list, Index]
 
 
 class Database:
@@ -74,12 +76,56 @@ class Database:
         self: Database,
         data_token: DataToken,
         data_store: T,
-        *columns: list[ColumnAlias]
+        alignment_columns: list[ColumnAlias],
     ) -> None:
-        raise NotImplementedError()
+        if not self._registrar.has_table(data_token):
+            raise MissingTableError(data_token)
+        columns = [str(col) for col in alignment_columns]
+        self._db_adapter.upsert(data_token, data_store, columns)
 
-    def drop(self: Database, data_token: DataToken, indices: Index) -> None:
-        raise NotImplementedError()
+    def delete(self: Database, data_token: DataToken, criteria: QueryType) -> None:
+        if not self._registrar.has_table(data_token):
+            raise MissingTableError(data_token)
+        self._db_adapter.delete(data_token, criteria)
+
+    def drop_indices(self: Database, data_token: DataToken, indices: Indexible) -> None:
+        if not self._registrar.has_table(data_token):
+            raise MissingTableError(data_token)
+        self._db_adapter.drop_indices(data_token, indices)
+
+    def drop_table(self: Database, data_token: DataToken) -> None:
+        self._registrar.drop_table(data_token)
+
+    def drop_group(self: Database, data_group: str) -> None:
+        self._registrar.drop_group(data_group)
+
+    def copy_table(
+        self: Database,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        self._registrar.copy_table(source_data_token, target_data_token)
+
+    def move_table(
+        self: Database,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        self._registrar.copy_table(source_data_token, target_data_token)
+
+    def copy_group(
+        self: Database,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        self._registrar.copy_table(source_data_token, target_data_token)
+
+    def move_group(
+        self: Database,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        self._registrar.copy_table(source_data_token, target_data_token)
 
     def __enter__(self: Database) -> Database:
         return self

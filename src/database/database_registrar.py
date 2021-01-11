@@ -97,6 +97,8 @@ class DatabaseRegistrar:
         self.register_store_class(store_class)
 
     def drop_table(self: DatabaseRegistrar, data_token: DataToken) -> None:
+        if not self.has_table(data_token):
+            raise MissingTableError(data_token)
         if self.is_table_protected(data_token):
             raise UnsupportedOperation("Cannot delete from protected data group")
         self._db_adapter.drop_table(data_token)
@@ -118,15 +120,40 @@ class DatabaseRegistrar:
         self._db_adapter.delete(TableReference.data_token, criteria)
 
     def drop_group(self: DatabaseRegistrar, data_group: str) -> None:
+        if not self.has_group(data_group):
+            raise MissingGroupError(data_group)
         if data_group == PROTECTED_GROUP:
             raise UnsupportedOperation("Cannot delete protected data group")
         if self.group_contains_protected_tables(data_group):
-            raise UnsupportedOperation("Cannot delete group that contains protected table")
+            raise UnsupportedOperation(
+                "Cannot delete group that contains protected table"
+            )
         for token in self.list_group_tables(data_group):
             self.drop_table(token)
         self._db_adapter.drop_group(data_group)
 
     def copy_table(
+        self: DatabaseRegistrar,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        raise NotImplementedError()
+
+    def move_table(
+        self: DatabaseRegistrar,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        raise NotImplementedError()
+
+    def copy_group(
+        self: DatabaseRegistrar,
+        source_data_token: DataToken,
+        target_data_token: DataToken,
+    ) -> None:
+        raise NotImplementedError()
+
+    def move_group(
         self: DatabaseRegistrar,
         source_data_token: DataToken,
         target_data_token: DataToken,
@@ -244,7 +271,6 @@ class DatabaseRegistrar:
                 TableReference.data_token, criteria, [str(TableReference.protected)]
             )
             return any([item[0] for item in table_rows])
-            
 
     def has_store_type(self, store_name: str, store_version: int):
         type_versions = self.store_type_versions()

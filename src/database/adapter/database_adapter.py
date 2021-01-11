@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar, Union
+
+from pandas.core.indexes.base import Index
 
 from src.data_store.query_type import QueryType
 from src.database.data_token import DataToken
+
+Indexible = Union[Any, list, Index]
 
 
 class DatabaseAdapter:
@@ -50,17 +54,30 @@ class DatabaseAdapter:
         raise NotImplementedError()
 
     def update(
-        self: DatabaseAdapter, data_token: DataToken, data_store: T, alignment_columns: list[str]
+        self: DatabaseAdapter,
+        data_token: DataToken,
+        data_store: T,
+        alignment_columns: list[str],
     ) -> None:
         raise NotImplementedError()
 
     def upsert(
-        self: DatabaseAdapter, data_token: DataToken, data_store: T, alignment_columns: list[str]
+        self: DatabaseAdapter,
+        data_token: DataToken,
+        data_store: T,
+        alignment_columns: list[str],
     ) -> None:
         raise NotImplementedError()
 
     def delete(
         self: DatabaseAdapter, data_token: DataToken, criteria: QueryType
+    ) -> None:
+        raise NotImplementedError()
+
+    def drop_indices(
+        self: DatabaseAdapter,
+        data_token: DataToken,
+        indices: Indexible,
     ) -> None:
         raise NotImplementedError()
 

@@ -3,7 +3,7 @@ from io import UnsupportedOperation
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
 from src.data_store.query_type import QueryType
 
-from typing import Any, cast, Iterable, Optional, Union
+from typing import Any, Generator, cast, Iterable, Optional, Union
 
 import pandas as pd
 from pandas import Index
@@ -93,31 +93,61 @@ class PandasBackend(DataBackend):
     def iloc(self: PandasBackend) -> ILocIndexer[PandasBackend]:
         return self._iloc
 
-    def __eq__(self, other):
+    def equals(self, other) -> bool:
         if type(other) is not PandasBackend:
             return False
         oc = cast(PandasBackend, other)
         if self.is_row() != oc.is_row():
-            return self.to_row()._data == oc.to_row()._data
-        else:
-            return self._data == oc._data
-
-    def equals(self, other):
-        if type(other) is not PandasBackend:
-            return False
-        oc = cast(PandasBackend, other)
-        if self.is_row() != oc.is_row():
-            return self.to_row()._data.equals(oc.to_row()._data)
+            if self.is_row():
+                if len(oc) > 1:
+                    return False
+                else:
+                    return self._data.equals(oc.to_row()._data)
+            else:
+                if len(self) > 1:
+                    return False
+                else:
+                    return self.to_row()._data.equals(oc._data)
         else:
             return self._data.equals(oc._data)
 
-    def __len__(self):
+    def __eq__(self, other) -> DataFrame:
+        if issubclass(type(other), PandasBackend):
+            other = self._data
+        return self._data == other
+
+    def __ne__(self, other: Any) -> DataFrame:
+        if issubclass(type(other), PandasBackend):
+            other = self._data
+        return self._data != other
+
+    def __gt__(self, other: Any) -> DataFrame:
+        if issubclass(type(other), PandasBackend):
+            other = self._data
+        return self._data > other
+
+    def __ge__(self, other: Any) -> DataFrame:
+        if issubclass(type(other), PandasBackend):
+            other = self._data
+        return self._data >= other
+
+    def __lt__(self, other: Any) -> DataFrame:
+        if issubclass(type(other), PandasBackend):
+            other = self._data
+        return self._data < other
+
+    def __le__(self, other: Any) -> DataFrame:
+        if issubclass(type(other), PandasBackend):
+            other = self._data
+        return self._data <= other
+
+    def __len__(self) -> int:
         return len(self._data)
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[str, None, None]:
         return iter(self._data)
 
-    def iterrows(self):
+    def iterrows(self) -> Generator[tuple[int, PandasBackend], None, None]:
         for i, row in self._data.iterrows():
             yield (i, PandasBackend(row))
 

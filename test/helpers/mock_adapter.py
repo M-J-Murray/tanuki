@@ -82,7 +82,8 @@ class MockAdapter(DatabaseAdapter):
         data = self.group_tables[data_token.data_group][data_token.table_name]
         query_compiler = PandasQueryCompiler(data)
         query = query_compiler.compile(criteria)
-        remaining = data.drop(query)
+        indices = query.index[query]
+        remaining = data.drop(indices)
         self.group_tables[data_token.data_group][data_token.table_name] = remaining
 
     def update(
@@ -94,6 +95,20 @@ class MockAdapter(DatabaseAdapter):
         data = self.group_tables[data_token.data_group][data_token.table_name]
         data = data.set_index(alignment_columns)
         new_data = data_store.to_table().to_pandas().set_index(alignment_columns)
+        data.update(new_data)
+        data = data.reset_index()
+        self.group_tables[data_token.data_group][data_token.table_name] = data
+
+    def upsert(
+        self: MockAdapter,
+        data_token: DataToken,
+        data_store: T,
+        alignment_columns: list[str],
+    ) -> None:
+        data = self.group_tables[data_token.data_group][data_token.table_name]
+        data = data.set_index(alignment_columns)
+        new_data = data_store.to_table().to_pandas().set_index(alignment_columns)
+        data = pd.concat([data, new_data[~new_data.index.isin(data.index)]])
         data.update(new_data)
         data = data.reset_index()
         self.group_tables[data_token.data_group][data_token.table_name] = data

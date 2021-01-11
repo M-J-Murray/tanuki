@@ -190,15 +190,6 @@ class DataStore:
     def __repr__(self: T) -> str:
         return str(self)
 
-    def __eq__(self: T, other: Any) -> Any:
-        if issubclass(type(other), DataStore):
-            if not self.__class__.__name__ == other.__class__.__name__:
-                raise UnsupportedOperation(
-                    "Cannot compare different DataStore types: "
-                    + f"{self.__class__.__name__} vs {other.__class__.__name__}"
-                )
-        return self.from_backend(self._data_backend == other)
-
     def equals(self: T, other) -> bool:
         if not issubclass(type(other), DataStore):
             return False
@@ -208,10 +199,44 @@ class DataStore:
             and self._data_backend.equals(oc._data_backend)
         )
 
+    def _get_external_backend(self: T, other: Any) -> None:
+        if issubclass(type(other), DataStore):
+            if not self.__class__.__name__ == other.__class__.__name__:
+                raise UnsupportedOperation(
+                    "Cannot compare different DataStore types: "
+                    + f"{self.__class__.__name__} vs {other.__class__.__name__}"
+                )
+            return cast(DataStore, other)._data_backend
+        else:
+            return other
+
+    def __eq__(self: T, other: Any) -> Any:
+        other = self._get_external_backend(other)
+        return self._data_backend == other
+
+    def __ne__(self: T, other: Any) -> Any:
+        other = self._get_external_backend(other)
+        return self._data_backend != other
+
+    def __gt__(self: T, other: Any) -> Any:
+        other = self._get_external_backend(other)
+        return self._data_backend > other
+
+    def __ge__(self: T, other: Any) -> Any:
+        other = self._get_external_backend(other)
+        return self._data_backend >= other
+
+    def __lt__(self: T, other: Any) -> Any:
+        other = self._get_external_backend(other)
+        return self._data_backend < other
+
+    def __le__(self: T, other: Any) -> Any:
+        other = self._get_external_backend(other)
+        return self._data_backend <= other
+
     def __len__(self: T) -> int:
         return len(self._data_backend)
 
-    @classmethod
     def __iter__(self: T) -> Generator[ColumnAlias, None, None]:
         for column in self._data_backend:
             yield self._active_columns[column]
