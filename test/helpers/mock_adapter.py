@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import Optional, TypeVar
+from typing import Any, Optional, TypeVar
 
 import pandas as pd
 from pandas.core.frame import DataFrame
+from pandas.core.series import Series
 
 from src.data_store.data_store import DataStore
-from src.data_store.query_type import QueryType
+from src.data_store.query_type import Query
 from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
 from src.database.data_token import DataToken
@@ -63,9 +64,9 @@ class MockAdapter(DatabaseAdapter):
     def query(
         self: MockAdapter,
         data_token: DataToken,
-        query_type: Optional[QueryType] = None,
+        query_type: Optional[Query] = None,
         columns: Optional[list[str]] = None,
-    ) -> list[tuple]:
+    ) -> Any:
         data = self.group_tables[data_token.data_group][data_token.table_name]
         if len(data) == 0:
             return []
@@ -73,12 +74,15 @@ class MockAdapter(DatabaseAdapter):
         if query_type is not None:
             query_compiler = PandasQueryCompiler(data)
             query = query_compiler.compile(query_type)
-            data = data[query]
+            if type(query) is not Series and type(query) is not DataFrame:
+                return query
+            else:
+                data = data[query]
         if columns is not None:
             data = data[columns]
         return [row[1:] for row in data.itertuples()]
 
-    def delete(self: MockAdapter, data_token: DataToken, criteria: QueryType) -> None:
+    def delete(self: MockAdapter, data_token: DataToken, criteria: Query) -> None:
         data = self.group_tables[data_token.data_group][data_token.table_name]
         query_compiler = PandasQueryCompiler(data)
         query = query_compiler.compile(criteria)

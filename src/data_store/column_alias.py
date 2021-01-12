@@ -1,11 +1,34 @@
 from __future__ import annotations
-from io import UnsupportedOperation
 
-from typing import Optional
+import builtins
+from io import UnsupportedOperation
+from typing import Any, Iterable, Optional, Union
 
 from src.data_store.data_type import DataType
+from src.data_store.query_type import Query
 
 from .column import Column
+
+old_len = builtins.len
+old_sum = builtins.sum
+
+
+def len(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:
+    if issubclass(type(a), Query) or type(a) is ColumnAlias:
+        return a.__len__()
+    else:
+        return old_len(a)
+
+
+def sum(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:
+    if issubclass(type(a), Query) or type(a) is ColumnAlias:
+        return a.__sum__()
+    else:
+        return old_sum(a)
+
+
+builtins.len = len
+builtins.sum = sum
 
 
 class ColumnAlias:
@@ -21,7 +44,9 @@ class ColumnAlias:
         self.__parameters__ = (self.dtype,)
         self._name = name
 
-    def __call__(self, data: Optional[list] = None, index: Optional[list] = None) -> Column:
+    def __call__(
+        self, data: Optional[list] = None, index: Optional[list] = None
+    ) -> Column:
         return Column(data=data, dtype=self.dtype, index=index)
 
     def __str__(self) -> str:
@@ -30,7 +55,7 @@ class ColumnAlias:
         return self._name
 
     def __repr__(self) -> str:
-        repr_def = f"{Column.__module__}.{Column.__name__}[{self.dtype.__name__}]"
+        repr_def = f"{Column.__name__}[{self.dtype.__name__}]"
         if self._name is not None:
             repr_def = f"{self._name}: {repr_def}"
         return repr_def
@@ -40,37 +65,48 @@ class ColumnAlias:
             raise UnsupportedOperation("Cannot hash Column outside of DataStore")
         return hash(str(self))
 
-    def __eq__(self, o: object) -> EqualsType:
-        if getattr(o, '__module__', None) == "typing":
+    def __eq__(self, o: object) -> EqualsQuery:
+        if getattr(o, "__module__", None) == "typing":
             return False
-        return EqualsType(self, o)
+        return EqualsQuery(self, o)
 
-    def __ne__(self, o: object) -> NotEqualsType:
-        return NotEqualsType(self, o)
+    def __ne__(self, o: object) -> NotEqualsQuery:
+        return NotEqualsQuery(self, o)
 
-    def __gt__(self, o: object) -> GreaterThanType:
-        return GreaterThanType(self, o)
+    def __gt__(self, o: object) -> GreaterThanQuery:
+        return GreaterThanQuery(self, o)
 
-    def __ge__(self, o: object) -> GreaterEqualType:
-        return GreaterEqualType(self, o)
+    def __ge__(self, o: object) -> GreaterEqualQuery:
+        return GreaterEqualQuery(self, o)
 
-    def __lt__(self, o: object) -> LessThanType:
-        return LessThanType(self, o)
+    def __lt__(self, o: object) -> LessThanQuery:
+        return LessThanQuery(self, o)
 
-    def __le__(self, o: object) -> LessEqualType:
-        return LessEqualType(self, o) 
+    def __le__(self, o: object) -> LessEqualQuery:
+        return LessEqualQuery(self, o)
 
-    def __len__(self) -> CountType:
-        return CountType(self)
+    def __len__(self) -> RowCountQuery:
+        return RowCountQuery(self)
 
-    def __and__(self, o: object) -> AndType:
-        return AndType(self, o)
+    def __sum__(self) -> SumQuery:
+        return SumQuery(self)
 
-    def __or__(self, o: object) -> OrType:
-        return OrType(self, o)
+    def __and__(self, o: object) -> AndQuery:
+        return AndQuery(self, o)
 
-    def __int__(self) -> int:
-        return -1
+    def __or__(self, o: object) -> OrQuery:
+        return OrQuery(self, o)
 
 
-from .query_type import AndType, CountType, EqualsType, GreaterEqualType, GreaterThanType, LessEqualType, LessThanType, NotEqualsType, OrType
+from .query_type import (
+    AndQuery,
+    EqualsQuery,
+    GreaterEqualQuery,
+    GreaterThanQuery,
+    LessEqualQuery,
+    LessThanQuery,
+    NotEqualsQuery,
+    OrQuery,
+    RowCountQuery,
+    SumQuery,
+)

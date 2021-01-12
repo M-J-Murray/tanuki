@@ -4,15 +4,15 @@ from pandas import DataFrame
 
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.query_type import (
-    AndType,
-    CountType,
-    EqualsType,
-    GreaterEqualType,
-    GreaterThanType,
-    LessEqualType,
-    LessThanType,
-    NotEqualsType,
-    OrType,
+    AndQuery,
+    RowCountQuery,
+    EqualsQuery,
+    GreaterEqualQuery,
+    GreaterThanQuery,
+    LessEqualQuery,
+    LessThanQuery,
+    NotEqualsQuery,
+    OrQuery,
 )
 from src.database.adapter.query.query_compiler import QueryCompiler
 
@@ -31,35 +31,38 @@ class PandasQueryCompiler(QueryCompiler[DataFrame]):
         else:
             return parameter
 
-    def EQUALS(self: "PandasQueryCompiler", equals_type: EqualsType) -> DataFrame:
+    def EQUALS(self: "PandasQueryCompiler", equals_type: EqualsQuery) -> DataFrame:
         return self._get_value(equals_type.a) == self._get_value(equals_type.b)
 
     def NOT_EQUALS(
-        self: "PandasQueryCompiler", not_equals_type: NotEqualsType
+        self: "PandasQueryCompiler", not_equals_type: NotEqualsQuery
     ) -> DataFrame:
         return self._get_value(not_equals_type.a) != self._get_value(not_equals_type.b)
 
     def GREATER_THAN(
-        self: "PandasQueryCompiler", gt_type: GreaterThanType
+        self: "PandasQueryCompiler", gt_type: GreaterThanQuery
     ) -> DataFrame:
         return self._get_value(gt_type.a) > self._get_value(gt_type.b)
 
     def GREATER_EQUAL(
-        self: "PandasQueryCompiler", ge_type: GreaterEqualType
+        self: "PandasQueryCompiler", ge_type: GreaterEqualQuery
     ) -> DataFrame:
         return self._get_value(ge_type.a) >= self._get_value(ge_type.b)
 
-    def LESS_THAN(self: "PandasQueryCompiler", lt_type: LessThanType) -> DataFrame:
+    def LESS_THAN(self: "PandasQueryCompiler", lt_type: LessThanQuery) -> DataFrame:
         return self._get_value(lt_type.a) < self._get_value(lt_type.b)
 
-    def LESS_EQUAL(self: "PandasQueryCompiler", le_type: LessEqualType) -> DataFrame:
+    def LESS_EQUAL(self: "PandasQueryCompiler", le_type: LessEqualQuery) -> DataFrame:
         return self._get_value(le_type.a) <= self._get_value(le_type.b)
 
-    def COUNT(self: "PandasQueryCompiler", count_type: CountType) -> DataFrame:
+    def ROW_COUNT(self: "PandasQueryCompiler", count_type: RowCountQuery) -> DataFrame:
         return len(self._get_value(count_type.a))
 
-    def AND(self: "PandasQueryCompiler", and_type: AndType) -> DataFrame:
+    def SUM(self: "PandasQueryCompiler", count_type: RowCountQuery) -> DataFrame:
+        return sum(self._get_value(count_type.a))
+
+    def AND(self: "PandasQueryCompiler", and_type: AndQuery) -> DataFrame:
         return self._get_value(and_type.a) & self._get_value(and_type.b)
 
-    def OR(self: "PandasQueryCompiler", or_type: OrType) -> DataFrame:
+    def OR(self: "PandasQueryCompiler", or_type: OrQuery) -> DataFrame:
         return self._get_value(or_type.a) | self._get_value(or_type.b)

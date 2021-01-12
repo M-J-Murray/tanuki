@@ -14,6 +14,7 @@ from typing import (
     TypeVar,
     Union,
 )
+from hamcrest.core.assert_that import assert_that
 
 from pandas import DataFrame, Index, Series
 
@@ -22,9 +23,10 @@ from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_type import Boolean, DataType, String
-from src.data_store.query_type import QueryType
+from src.data_store.query_type import Query
 from src.database.data_token import DataToken
 
+B = TypeVar("B", bound=DataBackend)
 T = TypeVar("T", bound="DataStore")
 
 
@@ -34,8 +36,7 @@ class DataStore:
     version: ClassVar[int]
     columns: ClassVar[list[ColumnAlias]]
 
-    _data_backend: DataBackend
-    columns: list[ColumnAlias]
+    _data_backend: B
     loc: DataStore._LocIndexer[T]
     iloc: DataStore._ILocIndexer[T]
 
@@ -71,7 +72,6 @@ class DataStore:
         self._attach_columns()
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
-        self.columns = list(self._active_columns.values())
         self.loc = DataStore._LocIndexer[T](self)
         self.iloc = DataStore._ILocIndexer[T](self)
 
@@ -104,7 +104,7 @@ class DataStore:
         return self._data_backend.to_pandas()
 
     @classmethod
-    def from_backend(cls: Type[T], data_backend: DataBackend) -> T:
+    def from_backend(cls: Type[T], data_backend: B) -> T:
         instance = cls()
         instance._data_backend = data_backend
         instance._validate_data_frame()
@@ -267,7 +267,7 @@ class DataStore:
         return self._data_backend.getitems(columns)
 
     def __getitem__(
-        self: T, item: Union[ColumnAlias, list[ColumnAlias], list[bool], QueryType]
+        self: T, item: Union[ColumnAlias, list[ColumnAlias], list[bool], Query]
     ) -> Union[Column, T]:
         if type(item) is str or type(item) is ColumnAlias:
             result = self._get_column(str(item))
@@ -279,7 +279,7 @@ class DataStore:
                 result = self.from_backend(self._data_backend[item])
             else:
                 result = self._data_backend[item]
-        elif issubclass(type(item), QueryType):
+        elif issubclass(type(item), Query):
             result = self._data_backend.query(item)
         else:
             result = self._data_backend[item]
@@ -288,10 +288,10 @@ class DataStore:
             result = self.from_backend(result)
         return result
 
-    def __getattr__(self: T, name: str) -> Any:
-        raise ValueError(
-            f"Could not match '{name}' to {self.__class__.__name__} column"
-        )
+    # def __getattr__(self: T, name: str) -> Any:
+    #     raise AttributeError(
+    #         f"Could not match '{name}' to {self.__class__.__name__} column"
+    #     )
 
     def set_index(self: T, column: Union[str, Iterable]) -> T:
         return self.from_backend(self._data_backend.set_index(column))
@@ -300,15 +300,22 @@ class DataStore:
         return self.from_backend(self._data_backend.reset_index(drop=drop))
 
     def append(self: T, new_store: T, ignore_index: bool = False) -> T:
-        return self._data_backend.append(
-            new_store._data_backend, ignore_index=ignore_index
+        return self.from_backend(
+            self._data_backend.append(
+                new_store._data_backend, ignore_index=ignore_index
+            )
         )
 
     @classmethod
     def concat(cls: T, all_data_stores: list[T], ignore_index: bool = False) -> T:
+        all_match = all([isinstance(item, cls) for item in all_data_stores])
+        if not all_match:
+            raise ValueError("All data stores must be same type for concat")
+
+        backend_sample: B = all_data_stores[0]._data_backend
         all_backends = [store._data_backend for store in all_data_stores]
         return cls.from_backend(
-            cls._data_backend.concat(all_backends, ignore_index=ignore_index)
+            backend_sample.concat(all_backends, ignore_index=ignore_index)
         )
 
     @classmethod

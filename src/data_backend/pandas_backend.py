@@ -1,7 +1,7 @@
 from __future__ import annotations
 from io import UnsupportedOperation
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
-from src.data_store.query_type import QueryType
+from src.data_store.query_type import Query
 
 from typing import Any, Generator, cast, Iterable, Optional, Union
 
@@ -163,7 +163,7 @@ class PandasBackend(DataBackend):
     def getitems(self, item: list[str]) -> PandasBackend:
         return PandasBackend(self._data[item])
 
-    def query(self, query_type: QueryType) -> PandasBackend:
+    def query(self, query_type: Query) -> PandasBackend:
         if self.is_row():
             raise ValueError("Cannot query from backend when data is in row format")
         query_compiler = PandasQueryCompiler(self._data)
@@ -185,14 +185,21 @@ class PandasBackend(DataBackend):
     def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
         return PandasBackend(self._data.reset_index(drop=drop))
 
+    def append(
+        self: PandasBackend, new_backend: PandasBackend, ignore_index: bool
+    ) -> PandasBackend:
+        return PandasBackend(
+            self._data.append(new_backend._data, ignore_index=ignore_index)
+        )
+
     @classmethod
     def concat(
         cls: type[PandasBackend],
         all_backends: list[PandasBackend],
         ignore_index: bool = False,
     ) -> PandasBackend:
-        all_data = [backend._data for backend in all_backends]
-        return cls(pd.concat(all_data, ignore_index=ignore_index))
+        all_data = [backend.to_table()._data for backend in all_backends]
+        return PandasBackend(pd.concat(all_data, ignore_index=ignore_index))
 
     def __str__(self) -> str:
         if type(self._data) == Series:

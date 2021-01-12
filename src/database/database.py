@@ -6,7 +6,7 @@ from typing import Any, Union, cast, Optional, Type, TypeVar
 from pandas import Index
 
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.query_type import QueryType
+from src.data_store.query_type import Query
 
 from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
@@ -43,7 +43,7 @@ class Database:
         self: Database,
         store_type: Type[T],
         data_token: DataToken,
-        query_type: Optional[QueryType] = None,
+        query_type: Optional[Query] = None,
         columns: Optional[list[ColumnAlias]] = None,
     ) -> T:
         if not self.has_table(data_token):
@@ -83,7 +83,7 @@ class Database:
         columns = [str(col) for col in alignment_columns]
         self._db_adapter.upsert(data_token, data_store, columns)
 
-    def delete(self: Database, data_token: DataToken, criteria: QueryType) -> None:
+    def delete(self: Database, data_token: DataToken, criteria: Query) -> None:
         if not self._registrar.has_table(data_token):
             raise MissingTableError(data_token)
         self._db_adapter.delete(data_token, criteria)

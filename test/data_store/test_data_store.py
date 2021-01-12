@@ -175,6 +175,32 @@ class TestDataStore:
         test_slice = self.test_store.iloc[[0, 2]]
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))
 
+    def test_append(self) -> None:
+        actual = self.test_store.append(
+            ExampleStore(a="d", b=4, c=False), ignore_index=True
+        )
+        assert_that(actual.a.tolist(), equal_to(["a", "b", "c", "d"]))
+        assert_that(actual.b.tolist(), equal_to([1, 2, 3, 4]))
+        assert_that(actual.c.tolist(), equal_to([True, False, True, False]))
+        
+        expected = ExampleStore(
+            a=["a", "b", "c", "d"], b=[1, 2, 3, 4], c=[True, False, True, False]
+        )
+        assert_that(actual.equals(expected), is_(True))
+
+    def test_concat(self) -> None:
+        new_store = ExampleStore(a="d", b=4, c=False)
+        actual = ExampleStore.concat([self.test_store, new_store], ignore_index=True)
+        assert_that(actual.a.tolist(), equal_to(["a", "b", "c", "d"]))
+        assert_that(actual.b.tolist(), equal_to([1, 2, 3, 4]))
+        assert_that(actual.c.tolist(), equal_to([True, False, True, False]))
+        
+        expected = ExampleStore(
+            a=["a", "b", "c", "d"], b=[1, 2, 3, 4], c=[True, False, True, False]
+        )
+        assert_that(actual.equals(expected), is_(True))
+
+
     def test_reset_index(self) -> None:
         test_slice = self.test_store.iloc[[0, 2]]
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))

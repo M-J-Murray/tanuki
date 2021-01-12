@@ -6,48 +6,52 @@ T = TypeVar("T")
 
 
 class QueryCompiler(Generic[T]):
-    def EQUALS(self: "QueryCompiler", equals_type: EqualsType) -> T:
+    def EQUALS(self: "QueryCompiler", equals_query: EqualsQuery) -> T:
         raise NotImplementedError()
 
-    def NOT_EQUALS(self: "QueryCompiler", not_equals_type: NotEqualsType) -> T:
+    def NOT_EQUALS(self: "QueryCompiler", not_equals_query: NotEqualsQuery) -> T:
         raise NotImplementedError()
 
-    def GREATER_THAN(self: "QueryCompiler", gt_type: GreaterThanType) -> T:
+    def GREATER_THAN(self: "QueryCompiler", gt_query: GreaterThanQuery) -> T:
         raise NotImplementedError()
 
-    def GREATER_EQUAL(self: "QueryCompiler", ge_type: GreaterEqualType) -> T:
+    def GREATER_EQUAL(self: "QueryCompiler", ge_query: GreaterEqualQuery) -> T:
         raise NotImplementedError()
 
-    def LESS_THAN(self: "QueryCompiler", lt_type: LessThanType) -> T:
+    def LESS_THAN(self: "QueryCompiler", lt_query: LessThanQuery) -> T:
         raise NotImplementedError()
 
-    def LESS_EQUAL(self: "QueryCompiler", le_type: LessEqualType) -> T:
+    def LESS_EQUAL(self: "QueryCompiler", le_query: LessEqualQuery) -> T:
         raise NotImplementedError()
 
-    def COUNT(self: "QueryCompiler", count_type: CountType) -> T:
+    def ROW_COUNT(self: "QueryCompiler", row_count_query: RowCountQuery) -> T:
         raise NotImplementedError()
 
-    def AND(self: "QueryCompiler", and_type: AndType) -> T:
+    def SUM(self: "QueryCompiler", sum_query: SumQuery) -> T:
         raise NotImplementedError()
 
-    def OR(self: "QueryCompiler", or_type: OrType) -> T:
+    def AND(self: "QueryCompiler", and_query: AndQuery) -> T:
         raise NotImplementedError()
 
-    def compile(self: "QueryCompiler", query_type: Union[Any, QueryType]) -> T:
-        if not isinstance(query_type, QueryType):
-            return query_type
-        return query_type.compile(self)
+    def OR(self: "QueryCompiler", or_query: OrQuery) -> T:
+        raise NotImplementedError()
+
+    def compile(self: "QueryCompiler", query: Union[Any, Query]) -> T:
+        if not isinstance(query, Query):
+            return query
+        return query.compile(self)
 
 
 from src.data_store.query_type import (
-    AndType,
-    CountType,
-    EqualsType,
-    GreaterEqualType,
-    GreaterThanType,
-    LessEqualType,
-    LessThanType,
-    NotEqualsType,
-    OrType,
-    QueryType,
+    AndQuery,
+    EqualsQuery,
+    GreaterEqualQuery,
+    GreaterThanQuery,
+    LessEqualQuery,
+    LessThanQuery,
+    NotEqualsQuery,
+    OrQuery,
+    Query,
+    RowCountQuery,
+    SumQuery,
 )

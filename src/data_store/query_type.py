@@ -6,142 +6,143 @@ from typing import Any, Iterable, TypeVar, Union
 T = TypeVar("T")
 
 
-class QueryType:
+class Query:
+    def __eq__(self, o: object) -> EqualsQuery:
+        return EqualsQuery(self, o)
 
-    def __eq__(self, o: object) -> EqualsType:
-        return EqualsType(self, o)
+    def __ne__(self, o: object) -> NotEqualsQuery:
+        return NotEqualsQuery(self, o)
 
-    def __ne__(self, o: object) -> NotEqualsType:
-        return NotEqualsType(self, o)
+    def __gt__(self, o: object) -> GreaterThanQuery:
+        return GreaterThanQuery(self, o)
 
-    def __gt__(self, o: object) -> GreaterThanType:
-        return GreaterThanType(self, o)
+    def __ge__(self, o: object) -> GreaterEqualQuery:
+        return GreaterEqualQuery(self, o)
 
-    def __ge__(self, o: object) -> GreaterEqualType:
-        return GreaterEqualType(self, o)
+    def __lt__(self, o: object) -> LessThanQuery:
+        return LessThanQuery(self, o)
 
-    def __lt__(self, o: object) -> LessThanType:
-        return LessThanType(self, o)
+    def __le__(self, o: object) -> LessEqualQuery:
+        return LessEqualQuery(self, o)
 
-    def __le__(self, o: object) -> LessEqualType:
-        return LessEqualType(self, o) 
+    def __len__(self) -> RowCountQuery:
+        return RowCountQuery(self)
 
-    def __len__(self) -> CountType:
-        return CountType(self)
+    def __sum__(self) -> SumQuery:
+        return SumQuery(self)
 
-    def __and__(self, o: object) -> AndType:
-        return AndType(self, o)
+    def __and__(self, o: object) -> AndQuery:
+        return AndQuery(self, o)
 
-    def __or__(self, o: object) -> OrType:
-        return OrType(self, o)
+    def __or__(self, o: object) -> OrQuery:
+        return OrQuery(self, o)
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         raise NotImplementedError()
 
 
 @dataclass
-class EqualsType(QueryType):
-    a: Union[Any, ColumnAlias, QueryType]
-    b: Union[Any, ColumnAlias, QueryType]
+class EqualsQuery(Query):
+    a: Union[Any, ColumnAlias, Query]
+    b: Union[Any, ColumnAlias, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.EQUALS(EqualsType(a, b))
+        return query_compiler.EQUALS(EqualsQuery(a, b))
 
 
 @dataclass
-class NotEqualsType(QueryType):
+class NotEqualsQuery(Query):
     a: Union[Any, ColumnAlias]
     b: Union[Any, ColumnAlias]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.NOT_EQUALS(NotEqualsType(a, b))
+        return query_compiler.NOT_EQUALS(NotEqualsQuery(a, b))
 
 
 @dataclass
-class GreaterThanType(QueryType):
-    a: Union[Any, ColumnAlias, QueryType]
-    b: Union[Any, ColumnAlias, QueryType]
+class GreaterThanQuery(Query):
+    a: Union[Any, ColumnAlias, Query]
+    b: Union[Any, ColumnAlias, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.GREATER_THAN(GreaterThanType(a, b))
+        return query_compiler.GREATER_THAN(GreaterThanQuery(a, b))
+
 
 @dataclass
-class GreaterEqualType(QueryType):
-    a: Union[Any, ColumnAlias, QueryType]
-    b: Union[Any, ColumnAlias, QueryType]
+class GreaterEqualQuery(Query):
+    a: Union[Any, ColumnAlias, Query]
+    b: Union[Any, ColumnAlias, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.GREATER_EQUAL(GreaterEqualType(a, b))
+        return query_compiler.GREATER_EQUAL(GreaterEqualQuery(a, b))
 
 
 @dataclass
-class LessThanType(QueryType):
-    a: Union[Any, ColumnAlias, QueryType]
-    b: Union[Any, ColumnAlias, QueryType]
+class LessThanQuery(Query):
+    a: Union[Any, ColumnAlias, Query]
+    b: Union[Any, ColumnAlias, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.LESS_THAN(LessThanType(a, b))
+        return query_compiler.LESS_THAN(LessThanQuery(a, b))
+
 
 @dataclass
-class LessEqualType(QueryType):
-    a: Union[Any, ColumnAlias, QueryType]
-    b: Union[Any, ColumnAlias, QueryType]
+class LessEqualQuery(Query):
+    a: Union[Any, ColumnAlias, Query]
+    b: Union[Any, ColumnAlias, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.LESS_EQUAL(LessEqualType(a, b))
-
-
+        return query_compiler.LESS_EQUAL(LessEqualQuery(a, b))
 
 @dataclass
-class CountType(QueryType):
-    a: Union[Iterable, ColumnAlias, QueryType]
+class RowCountQuery(Query):
+    a: Union[Iterable, ColumnAlias, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
-        return query_compiler.COUNT(CountType(a))
+        return query_compiler.COUNT(RowCountQuery(a))
 
-    def __len__(self) -> CountType:
-        return self
+@dataclass
+class SumQuery(Query):
+    a: Union[Iterable, ColumnAlias, Query]
 
-    def __int__(self) -> CountType:
-        return self
-
-    def __index__(self) -> CountType:
-        return self
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        a = query_compiler.compile(self.a)
+        return query_compiler.SUM(RowCountQuery(a))
 
 
 @dataclass
-class AndType(QueryType):
-    a: Union[bool, QueryType]
-    b: Union[bool, QueryType]
+class AndQuery(Query):
+    a: Union[bool, Query]
+    b: Union[bool, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.AND(AndType(a, b))
+        return query_compiler.AND(AndQuery(a, b))
 
 
 @dataclass
-class OrType(QueryType):
-    a: Union[bool, QueryType]
-    b: Union[bool, QueryType]
+class OrQuery(Query):
+    a: Union[bool, Query]
+    b: Union[bool, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
-        return query_compiler.OR(OrType(a, b))
+        return query_compiler.OR(OrQuery(a, b))
 
 
 from src.data_store.column_alias import ColumnAlias

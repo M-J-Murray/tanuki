@@ -4,7 +4,7 @@ ignore = D100, D104, W504, W503, S301, S403, E203
 max-line-length = 120
 max-annotations-complexity = 4
 
-application-import-names = src, test
+application-import-names = src,test
 
 import-order-style = google
 

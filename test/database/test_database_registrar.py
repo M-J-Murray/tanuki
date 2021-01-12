@@ -1,17 +1,25 @@
+import pickle
+from test.helpers.example_store import ExampleStore, RAW_GROUP
+from test.helpers.expected_reference_tables import (
+    STORE_DEFINITION_STORE_DEFINITION,
+    STORE_REFERENCE,
+    STORE_REFERENCE_STORE_DEFINITION,
+    TABLE_REFERENCE,
+    TABLE_REFERENCE_STORE_DEFINITION,
+)
 from test.helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
 from pytest import fail
 
-from src.data_store.column import Column
-from src.data_store.data_store import DataStore
-from src.data_store.data_type import String, Int64, Boolean
+from src.data_store.data_type import Boolean, Int64, String
 from src.database.data_token import DataToken
 from src.database.database_registrar import DatabaseRegistrar
-from src.database.reference_tables import PROTECTED_GROUP, StoreDefinition
-import pickle
-
-from test.helpers.example_store import ExampleStore, RAW_GROUP
+from src.database.reference_tables import (
+    PROTECTED_GROUP,
+    StoreDefinition,
+    TableReference,
+)
 
 
 class TestDatabaseRegistrar:
@@ -19,7 +27,7 @@ class TestDatabaseRegistrar:
         self.adapter = MockAdapter()
         self.registrar = DatabaseRegistrar(self.adapter)
 
-    def test_reference_table_setup(self) -> None:
+    def test_reference_table_external_setup(self) -> None:
         protected_tokens = [
             DataToken("table_reference", PROTECTED_GROUP),
             DataToken("store_reference", PROTECTED_GROUP),
@@ -39,7 +47,88 @@ class TestDatabaseRegistrar:
         assert_that(self.registrar.has_group(PROTECTED_GROUP), is_(True))
         for token in protected_tokens:
             assert_that(self.registrar.has_table(token), is_(True))
-            assert_that(self.registrar.is_table_protected(token), is_(True))
+            assert_that(self.registrar._is_table_protected(token), is_(True))
+        assert_that(self.registrar._has_reference_tables(), is_(True))
+
+    def test_reference_table_internal_setup(self) -> None:
+        table_refs = self.registrar._table_references()
+        assert_that(table_refs.equals(TABLE_REFERENCE), is_(True))
+
+        store_refs = self.registrar._store_references()
+        assert_that(store_refs.equals(STORE_REFERENCE))
+
+        table_ref_store_def = self.registrar._store_definition(
+            DataToken("TableReference_v1_definition", PROTECTED_GROUP), 1
+        )
+        assert_that(table_ref_store_def.equals(TABLE_REFERENCE_STORE_DEFINITION))
+
+        store_ref_store_def = self.registrar._store_definition(
+            DataToken("StoreReference_v1_definition", PROTECTED_GROUP), 1
+        )
+        assert_that(store_ref_store_def.equals(STORE_REFERENCE_STORE_DEFINITION))
+
+        store_def_store_def = self.registrar._store_definition(
+            DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP), 1
+        )
+        assert_that(store_def_store_def.equals(STORE_DEFINITION_STORE_DEFINITION))
+
+    def test_create_table(self) -> None:
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(False))
+        def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
+        assert_that(self.registrar.has_table(def_token), equal_to(False))
+
+        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
+
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(True))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(True))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(True))
+        assert_that(self.registrar.has_table(def_token), equal_to(True))
+
+    def test_drop_table(self) -> None:
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(False))
+        def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
+        assert_that(self.registrar.has_table(def_token), equal_to(False))
+
+        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
+
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(True))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(True))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(True))
+        assert_that(self.registrar.has_table(def_token), equal_to(True))
+
+        self.registrar.drop_table(ExampleStore.data_token)
+
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(False))
+        def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
+        assert_that(self.registrar.has_table(def_token), equal_to(False))
+
+    def test_drop_group(self) -> None:
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(False))
+        def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
+        assert_that(self.registrar.has_table(def_token), equal_to(False))
+
+        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
+
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(True))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(True))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(True))
+        assert_that(self.registrar.has_table(def_token), equal_to(True))
+
+        self.registrar.drop_group(ExampleStore.data_token.data_group)
+
+        assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
+        assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(False))
+        def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
+        assert_that(self.registrar.has_table(def_token), equal_to(False))
 
     def test_has_group(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
@@ -54,7 +143,7 @@ class TestDatabaseRegistrar:
     def test_table_protected(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
         assert_that(
-            self.registrar.is_table_protected(ExampleStore.data_token), is_(False)
+            self.registrar._is_table_protected(ExampleStore.data_token), is_(False)
         )
         protected_tokens = [
             DataToken("table_reference", PROTECTED_GROUP),
@@ -64,18 +153,18 @@ class TestDatabaseRegistrar:
             DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
         ]
         for token in protected_tokens:
-            assert_that(self.registrar.is_table_protected(token), is_(True))
+            assert_that(self.registrar._is_table_protected(token), is_(True))
 
     def test_group_contains_protected(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
         assert_that(
-            self.registrar.group_contains_protected_tables(
+            self.registrar._group_contains_protected_tables(
                 ExampleStore.data_token.data_group
             ),
             is_(False),
         )
         assert_that(
-            self.registrar.group_contains_protected_tables(PROTECTED_GROUP),
+            self.registrar._group_contains_protected_tables(PROTECTED_GROUP),
             is_(True),
         )
 
@@ -126,18 +215,18 @@ class TestDatabaseRegistrar:
 
     def test_has_store_type(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
-        assert_that(self.registrar.has_store_type("ExampleStore", 1), is_(True))
-        assert_that(self.registrar.has_store_type("TableReference", 1), is_(True))
-        assert_that(self.registrar.has_store_type("StoreReference", 1), is_(True))
-        assert_that(self.registrar.has_store_type("StoreDefinition", 1), is_(True))
+        assert_that(self.registrar._has_store_type("ExampleStore", 1), is_(True))
+        assert_that(self.registrar._has_store_type("TableReference", 1), is_(True))
+        assert_that(self.registrar._has_store_type("StoreReference", 1), is_(True))
+        assert_that(self.registrar._has_store_type("StoreDefinition", 1), is_(True))
         assert_that(
-            self.registrar.has_store_type("StoreDefinition_v1_definition", 1),
+            self.registrar._has_store_type("StoreDefinition_v1_definition", 1),
             is_(False),
         )
 
     def test_store_type_versions(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
-        actual = self.registrar.store_type_versions()
+        actual = self.registrar._store_references().store_versions()
         expected = {
             "ExampleStore": {1},
             "TableReference": {1},
@@ -161,7 +250,7 @@ class TestDatabaseRegistrar:
             ),
         }
         for store_name, def_token in store_name_def_tokens.items():
-            store_token, def_version = self.registrar.definition_reference_version(
+            store_token, def_version = self.registrar._definition_reference_version(
                 store_name, 1
             )
             assert_that(store_token, equal_to(def_token))
@@ -169,7 +258,7 @@ class TestDatabaseRegistrar:
 
     def test_store_definition(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
-        actual = self.registrar.store_definition(
+        actual = self.registrar._store_definition(
             DataToken("ExampleStore_v1_definition", PROTECTED_GROUP), 1
         )
         expected = StoreDefinition(
@@ -190,10 +279,7 @@ class TestDatabaseRegistrar:
         assert_that(actual.equals(expected), is_(True))
         assert_that(store_class.__name__, equal_to("ExampleStore"))
         assert_that(actual.test_method(), equal_to("test_result"))
-        
+
         for actual, expected in zip(store_class.columns, ExampleStore.columns):
             assert_that(actual._name, equal_to(expected._name))
             assert_that(actual.dtype, equal_to(expected.dtype))
-
-    def test_drop_store_type(self) -> None:
-        fail("Not Implemented")

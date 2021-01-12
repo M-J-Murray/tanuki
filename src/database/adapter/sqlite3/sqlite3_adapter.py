@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import closing
 import sqlite3
 from sqlite3 import Connection
-from src.data_store.query_type import QueryType
+from src.data_store.query_type import Query
 from src.database.adapter.query.sql_query_compiler import SqlQueryCompiler
 from src.database.adapter.database_schema import DatabaseSchema
 from typing import Optional, TypeVar
@@ -44,7 +44,7 @@ class Sqlite3Adapter(DatabaseAdapter):
     def query(
         self: Sqlite3Adapter,
         data_token: DataToken,
-        query_type: Optional[QueryType],
+        query_type: Optional[Query],
         columns: Optional[list[str]] = None,
     ) -> DataStore:
         statement = SqlStatement()

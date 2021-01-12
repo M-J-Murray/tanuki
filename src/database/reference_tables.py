@@ -47,10 +47,9 @@ class StoreReference(DataStore, version=1):
     definition_reference: Column[str]
     definition_version: Column[int]
 
-    @staticmethod
-    def store_versions(data_rows: list[tuple]) -> dict[str, set[int]]:
+    def store_versions(self: StoreReference) -> dict[str, set[int]]:
         store_versions: dict[str, set[int]] = {}
-        for type, version, _, _ in data_rows:
+        for _, type, version, _, _ in self.itertuples():
             if type not in store_versions:
                 store_versions[type] = set()
             store_versions[type].add(version)
@@ -85,7 +84,7 @@ class StoreDefinition(DataStore, version=1):
             builder.append_row(column_name=name, column_type=pickle.dumps(column.dtype))
         return builder.build()
 
-    def store_class(
+    def _store_class(
         self: StoreDefinition,
         store_type: str,
         store_version: int,
