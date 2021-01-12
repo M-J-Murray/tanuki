@@ -6,7 +6,7 @@ from typing import Any, Union, cast, Optional, Type, TypeVar
 from pandas import Index
 
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 
 from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
@@ -43,13 +43,13 @@ class Database:
         self: Database,
         store_type: Type[T],
         data_token: DataToken,
-        query_type: Optional[Query] = None,
+        query: Optional[Query] = None,
         columns: Optional[list[ColumnAlias]] = None,
     ) -> T:
         if not self.has_table(data_token):
             raise MissingTableError(data_token)
         columns = [str(col) for col in columns] if columns is not None else None
-        table_data = self._db_adapter.query(data_token, query_type, columns)
+        table_data = self._db_adapter.query(data_token, query, columns)
         store_class: Type[T] = self._registrar.store_class(data_token)
         store = store_class.from_rows(table_data)
         return cast(store_type, store.to_table())

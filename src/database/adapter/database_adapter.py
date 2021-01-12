@@ -4,7 +4,7 @@ from typing import Any, Optional, TypeVar, Union
 
 from pandas.core.indexes.base import Index
 
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 from src.database.data_token import DataToken
 
 Indexible = Union[Any, list, Index]
@@ -40,7 +40,7 @@ class DatabaseAdapter:
     def query(
         self: DatabaseAdapter,
         data_token: DataToken,
-        query_type: Optional[Query] = None,
+        query: Optional[Query] = None,
         columns: Optional[list[str]] = None,
     ) -> Any:
         raise NotImplementedError()
@@ -69,9 +69,7 @@ class DatabaseAdapter:
     ) -> None:
         raise NotImplementedError()
 
-    def delete(
-        self: DatabaseAdapter, data_token: DataToken, criteria: Query
-    ) -> None:
+    def delete(self: DatabaseAdapter, data_token: DataToken, criteria: Query) -> None:
         raise NotImplementedError()
 
     def drop_indices(

@@ -6,7 +6,7 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.column import Column
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 
 B = TypeVar("B", bound="DataBackend")
 
@@ -112,7 +112,7 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def query(self, query_type: Query) -> B:
+    def query(self, query: Query) -> B:
         raise NotImplementedError()
 
     @abstractmethod

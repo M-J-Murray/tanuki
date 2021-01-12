@@ -1,4 +1,4 @@
-from src.data_store.query_type import AndQuery, EqualsQuery, NotEqualsQuery, OrQuery
+from src.data_store.query import AndQuery, EqualsQuery, NotEqualsQuery, OrQuery
 from src.database.adapter.query.query_compiler import QueryCompiler
 
 

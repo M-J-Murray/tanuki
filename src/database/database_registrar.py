@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import UnsupportedOperation
 from typing import Optional, Type, TypeVar
 
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.data_token import DataToken
 
@@ -182,13 +182,13 @@ class DatabaseRegistrar:
 
     def _table_references(self, criteria: Optional[Query] = None) -> TableReference:
         table_rows = self._db_adapter.query(
-            TableReference.data_token, query_type=criteria
+            TableReference.data_token, query=criteria
         )
         return TableReference.from_rows(table_rows)
 
     def _store_references(self, criteria: Optional[Query] = None) -> StoreReference:
         table_rows = self._db_adapter.query(
-            StoreReference.data_token, query_type=criteria
+            StoreReference.data_token, query=criteria
         )
         return StoreReference.from_rows(table_rows)
 

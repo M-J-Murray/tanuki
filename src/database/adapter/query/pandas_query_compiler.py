@@ -3,7 +3,7 @@ from typing import Any, Union
 from pandas import DataFrame
 
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.query_type import (
+from src.data_store.query import (
     AndQuery,
     RowCountQuery,
     EqualsQuery,

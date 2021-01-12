@@ -11,7 +11,7 @@ class Sqlite3Schema(DatabaseSchema):
     def __init__(self, data_store_type: Type[T]) -> None:
         store_cols = data_store_type._parse_columns()
         self._columns = []
-        for name, alias in store_cols:
+        for name, alias in store_cols.items():
             self._columns.append(f"{name} {alias}")
 
     def __str__(self) -> str:

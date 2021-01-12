@@ -33,14 +33,14 @@ class SqlStatement:
         *columns: str,
     ) -> "SqlStatement":
         cols_str = ", ".join([str(col) for col in columns])
-        self._commands.append(f"INSERT INTO {data_token.to_sql()} ({cols_str})")
+        self._commands.append(f"INSERT INTO {data_token} ({cols_str})")
         return self
 
     def INSERT_ALL(
         self: "SqlStatement",
         data_token: DataToken,
     ) -> "SqlStatement":
-        self._commands.append(f"INSERT INTO {data_token.to_sql()}")
+        self._commands.append(f"INSERT INTO {data_token}")
         return self
 
     def VALUES(self: "SqlStatement", values: Tuple[Any, ...]) -> "SqlStatement":
@@ -71,11 +71,11 @@ class SqlStatement:
 
     def CREATE_TABLE(
         self: "SqlStatement",
-        data_token: DataToken,
+        table_name: str,
         schema_def: str,
         unlogged: bool = False,
     ) -> "SqlStatement":
-        str_def = f"CREATE TABLE {data_token.to_sql()} ({schema_def})"
+        str_def = f"CREATE TABLE {table_name} ({schema_def})"
         if unlogged:
             str_def = "UNLOGGED " + str_def
         self._commands.append(str_def)
@@ -88,7 +88,7 @@ class SqlStatement:
     ) -> "SqlStatement":
         self._commands.append(
             f"CREATE TEMPORARY TABLE {temp_table_name} "
-            + f"(like {reference_token.to_sql()} INCLUDING DEFAULTS)"
+            + f"(like {reference_token} INCLUDING DEFAULTS)"
         )
         return self
 
@@ -97,7 +97,7 @@ class SqlStatement:
         return self
 
     def DROP_TABLE(self: "SqlStatement", data_token: DataToken) -> "SqlStatement":
-        self._commands.append(f"DROP TABLE {data_token.to_sql()}")
+        self._commands.append(f"DROP TABLE {data_token}")
         return self
 
     def AND(self: "SqlStatement") -> "SqlStatement":

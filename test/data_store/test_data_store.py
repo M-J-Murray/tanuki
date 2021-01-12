@@ -143,7 +143,7 @@ class TestDataStore:
         assert_that(test2.equals(test3), is_(True))
         assert_that(test3.equals(expected), is_(True))
 
-    def test_get_query_type(self) -> None:
+    def test_get_query(self) -> None:
         query = ExampleStore.b > 1
         actual = self.test_store[query]
         expected = ExampleStore(a=["b", "c"], b=[2, 3], c=[False, True], index=[1, 2])

@@ -5,7 +5,7 @@ from io import UnsupportedOperation
 from typing import Any, Iterable, Optional, Union
 
 from src.data_store.data_type import DataType
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 
 from .column import Column
 
@@ -98,7 +98,7 @@ class ColumnAlias:
         return OrQuery(self, o)
 
 
-from .query_type import (
+from .query import (
     AndQuery,
     EqualsQuery,
     GreaterEqualQuery,

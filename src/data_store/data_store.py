@@ -23,7 +23,7 @@ from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_type import Boolean, DataType, String
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 from src.database.data_token import DataToken
 
 B = TypeVar("B", bound=DataBackend)

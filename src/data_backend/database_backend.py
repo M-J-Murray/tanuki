@@ -7,7 +7,7 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.column import Column
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 from src.database.data_token import DataToken
 from src.database.database import Database
 
@@ -86,7 +86,7 @@ class DatabaseBackend(DataBackend):
     def __getitem__(self, item: str) -> Any:
         raise NotImplementedError()
 
-    def query(self, query_type: Query) -> DatabaseBackend:
+    def query(self, query: Query) -> DatabaseBackend:
         raise NotImplementedError()
 
     def __setitem__(self, item: str, value: Column) -> Column:

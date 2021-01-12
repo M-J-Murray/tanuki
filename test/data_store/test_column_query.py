@@ -5,7 +5,7 @@ from pytest import fail
 
 from src.data_store.column import Column
 from src.data_store.data_store import DataStore
-from src.data_store.query_type import EqualsQuery
+from src.data_store.query import EqualsQuery
 
 
 class TestColumnQuery:

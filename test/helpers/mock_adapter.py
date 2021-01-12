@@ -8,7 +8,7 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.data_store import DataStore
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 from src.database.adapter.database_adapter import DatabaseAdapter, Indexible
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
 from src.database.data_token import DataToken
@@ -58,16 +58,16 @@ class MockAdapter(DatabaseAdapter):
     def query(
         self: MockAdapter,
         data_token: DataToken,
-        query_type: Optional[Query] = None,
+        query: Optional[Query] = None,
         columns: Optional[list[str]] = None,
     ) -> Any:
         data = self.group_tables[data_token.data_group][data_token.table_name]
         if len(data) == 0:
             return []
 
-        if query_type is not None:
+        if query is not None:
             query_compiler = PandasQueryCompiler(data)
-            query = query_compiler.compile(query_type)
+            query = query_compiler.compile(query)
             if type(query) is not Series and type(query) is not DataFrame:
                 return query
             else:

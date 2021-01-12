@@ -42,7 +42,7 @@ class QueryCompiler(Generic[T]):
         return query.compile(self)
 
 
-from src.data_store.query_type import (
+from src.data_store.query import (
     AndQuery,
     EqualsQuery,
     GreaterEqualQuery,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from io import UnsupportedOperation
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
-from src.data_store.query_type import Query
+from src.data_store.query import Query
 
 from typing import Any, Generator, cast, Iterable, Optional, Union
 
@@ -163,11 +163,11 @@ class PandasBackend(DataBackend):
     def getitems(self, item: list[str]) -> PandasBackend:
         return PandasBackend(self._data[item])
 
-    def query(self, query_type: Query) -> PandasBackend:
+    def query(self, query: Query) -> PandasBackend:
         if self.is_row():
             raise ValueError("Cannot query from backend when data is in row format")
         query_compiler = PandasQueryCompiler(self._data)
-        query = query_compiler.compile(query_type)
+        query = query_compiler.compile(query)
         return PandasBackend(self._data[query])
 
     def __setitem__(self, item: str, value: Union[Any, Column]) -> Column:
