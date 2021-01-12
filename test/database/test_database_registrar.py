@@ -140,34 +140,6 @@ class TestDatabaseRegistrar:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
         assert_that(self.registrar.list_groups(), equal_to([RAW_GROUP]))
 
-    def test_table_protected(self) -> None:
-        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
-        assert_that(
-            self.registrar._is_table_protected(ExampleStore.data_token), is_(False)
-        )
-        protected_tokens = [
-            DataToken("table_reference", PROTECTED_GROUP),
-            DataToken("store_reference", PROTECTED_GROUP),
-            DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP),
-            DataToken("TableReference_v1_definition", PROTECTED_GROUP),
-            DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
-        ]
-        for token in protected_tokens:
-            assert_that(self.registrar._is_table_protected(token), is_(True))
-
-    def test_group_contains_protected(self) -> None:
-        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
-        assert_that(
-            self.registrar._group_contains_protected_tables(
-                ExampleStore.data_token.data_group
-            ),
-            is_(False),
-        )
-        assert_that(
-            self.registrar._group_contains_protected_tables(PROTECTED_GROUP),
-            is_(True),
-        )
-
     def test_has_table(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
         all_tokens = [
@@ -211,6 +183,34 @@ class TestDatabaseRegistrar:
         assert_that(
             self.registrar.list_group_tables(PROTECTED_GROUP),
             equal_to(protected_tokens),
+        )
+
+    def test_table_protected(self) -> None:
+        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
+        assert_that(
+            self.registrar._is_table_protected(ExampleStore.data_token), is_(False)
+        )
+        protected_tokens = [
+            DataToken("table_reference", PROTECTED_GROUP),
+            DataToken("store_reference", PROTECTED_GROUP),
+            DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP),
+            DataToken("TableReference_v1_definition", PROTECTED_GROUP),
+            DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
+        ]
+        for token in protected_tokens:
+            assert_that(self.registrar._is_table_protected(token), is_(True))
+
+    def test_group_contains_protected(self) -> None:
+        self.registrar.create_table(ExampleStore.data_token, ExampleStore)
+        assert_that(
+            self.registrar._group_contains_protected_tables(
+                ExampleStore.data_token.data_group
+            ),
+            is_(False),
+        )
+        assert_that(
+            self.registrar._group_contains_protected_tables(PROTECTED_GROUP),
+            is_(True),
         )
 
     def test_has_store_type(self) -> None:

@@ -9,7 +9,7 @@ from pandas.core.series import Series
 
 from src.data_store.data_store import DataStore
 from src.data_store.query_type import Query
-from src.database.adapter.database_adapter import DatabaseAdapter
+from src.database.adapter.database_adapter import DatabaseAdapter, Indexible
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
 from src.database.data_token import DataToken
 
@@ -40,12 +40,6 @@ class MockAdapter(DatabaseAdapter):
         self.group_tables[data_token.data_group][
             data_token.table_name
         ] = data_store_type().to_pandas()
-
-    def drop_group(self: MockAdapter, data_group: str) -> None:
-        del self.group_tables[data_group]
-
-    def drop_table(self: MockAdapter, data_token: DataToken) -> None:
-        del self.group_tables[data_token.data_group][data_token.table_name]
 
     def insert(
         self: MockAdapter,
@@ -82,14 +76,6 @@ class MockAdapter(DatabaseAdapter):
             data = data[columns]
         return [row[1:] for row in data.itertuples()]
 
-    def delete(self: MockAdapter, data_token: DataToken, criteria: Query) -> None:
-        data = self.group_tables[data_token.data_group][data_token.table_name]
-        query_compiler = PandasQueryCompiler(data)
-        query = query_compiler.compile(criteria)
-        indices = query.index[query]
-        remaining = data.drop(indices)
-        self.group_tables[data_token.data_group][data_token.table_name] = remaining
-
     def update(
         self: MockAdapter,
         data_token: DataToken,
@@ -116,3 +102,23 @@ class MockAdapter(DatabaseAdapter):
         data.update(new_data)
         data = data.reset_index()
         self.group_tables[data_token.data_group][data_token.table_name] = data
+
+    def delete(self: MockAdapter, data_token: DataToken, criteria: Query) -> None:
+        data = self.group_tables[data_token.data_group][data_token.table_name]
+        query_compiler = PandasQueryCompiler(data)
+        query = query_compiler.compile(criteria)
+        indices = query.index[query]
+        remaining = data.drop(indices)
+        self.group_tables[data_token.data_group][data_token.table_name] = remaining
+
+    def drop_indices(
+        self: MockAdapter, data_token: DataToken, indices: Indexible
+    ) -> None:
+        data = self.group_tables[data_token.data_group][data_token.table_name]
+        self.group_tables[data_token.data_group][data_token.table_name] = data.drop(indices)
+
+    def drop_group(self: MockAdapter, data_group: str) -> None:
+        del self.group_tables[data_group]
+
+    def drop_table(self: MockAdapter, data_token: DataToken) -> None:
+        del self.group_tables[data_token.data_group][data_token.table_name]
