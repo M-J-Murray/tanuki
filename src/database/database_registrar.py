@@ -28,15 +28,15 @@ class DatabaseRegistrar:
         self._validate_reference_tables()
 
     def _has_reference_tables(self):
-        return self._db_adapter.has_table(
+        return self._db_adapter.has_group_table(
             TableReference.data_token
-        ) and self._db_adapter.has_table(StoreReference.data_token)
+        ) and self._db_adapter.has_group_table(StoreReference.data_token)
 
     def _setup_reference_tables(self):
         if not self._db_adapter.has_group(PROTECTED_GROUP):
             self._db_adapter.create_group(PROTECTED_GROUP)
-        self._db_adapter.create_table(TableReference.data_token, TableReference)
-        self._db_adapter.create_table(StoreReference.data_token, StoreReference)
+        self._db_adapter.create_group_table(TableReference.data_token, TableReference)
+        self._db_adapter.create_group_table(StoreReference.data_token, StoreReference)
         self._register_table(TableReference.data_token, TableReference, protected=True)
         self._register_table(StoreReference.data_token, StoreReference, protected=True)
         self._register_store_class(StoreDefinition)
@@ -44,9 +44,9 @@ class DatabaseRegistrar:
         self._register_store_class(StoreReference)
 
     def _validate_reference_tables(self):
-        if not self._db_adapter.has_table(TableReference.data_token):
+        if not self._db_adapter.has_group_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
-        if not self._db_adapter.has_table(StoreReference.data_token):
+        if not self._db_adapter.has_group_table(StoreReference.data_token):
             raise DatabaseCorruptionError("StoreReference table is missing")
 
         exceptions = []
@@ -55,7 +55,7 @@ class DatabaseRegistrar:
             try:
                 if not self._db_adapter.has_group(data_token.data_group):
                     raise MissingGroupError(data_token.data_group)
-                if not self._db_adapter.has_table(data_token):
+                if not self._db_adapter.has_group_table(data_token):
                     raise MissingTableError(data_token)
                 store_type, store_version = self._table_store_type_version(data_token)
                 token_version = self._definition_reference_version(
@@ -92,7 +92,7 @@ class DatabaseRegistrar:
     ) -> None:
         if not self.has_group(data_token.data_group):
             self._db_adapter.create_group(data_token.data_group)
-        self._db_adapter.create_table(data_token, store_class)
+        self._db_adapter.create_group_table(data_token, store_class)
         self._register_table(data_token, store_class, protected)
         self._register_store_class(store_class)
 
@@ -101,7 +101,7 @@ class DatabaseRegistrar:
             raise MissingTableError(data_token)
         if self._is_table_protected(data_token):
             raise UnsupportedOperation("Cannot delete from protected data group")
-        self._db_adapter.drop_table(data_token)
+        self._db_adapter.drop_group_table(data_token)
         store_type, store_version = self._table_store_type_version(data_token)
 
         store_type_version_count = sum(
@@ -163,7 +163,7 @@ class DatabaseRegistrar:
         raise NotImplementedError()
 
     def _is_table_registered(self, data_token: DataToken) -> bool:
-        if not self._db_adapter.has_table(data_token):
+        if not self._db_adapter.has_group_table(data_token):
             return False
         else:
             return data_token in self._table_references().data_tokens()
@@ -171,7 +171,7 @@ class DatabaseRegistrar:
     def has_table(self, data_token: DataToken) -> bool:
         token_set = set(self._table_references().data_tokens())
         registrar_result = data_token in token_set
-        db_result = self._db_adapter.has_table(data_token)
+        db_result = self._db_adapter.has_group_table(data_token)
         if registrar_result != db_result:
             raise DatabaseCorruptionError(
                 "Table existence disagreement between"
@@ -193,7 +193,7 @@ class DatabaseRegistrar:
         return StoreReference.from_rows(table_rows)
 
     def list_tables(self) -> list[DataToken]:
-        if not self._db_adapter.has_table(TableReference.data_token):
+        if not self._db_adapter.has_group_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
             criteria = TableReference.protected == False
@@ -212,7 +212,7 @@ class DatabaseRegistrar:
             return registrar_result
 
     def list_groups(self) -> set[str]:
-        if not self._db_adapter.has_table(TableReference.data_token):
+        if not self._db_adapter.has_group_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
             criteria = TableReference.protected == False
@@ -220,7 +220,7 @@ class DatabaseRegistrar:
             return table_references.data_group.tolist()
 
     def list_group_tables(self, data_group: str) -> list[DataToken]:
-        if not self._db_adapter.has_table(TableReference.data_token):
+        if not self._db_adapter.has_group_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
             criteria = TableReference.data_group == data_group
@@ -249,7 +249,7 @@ class DatabaseRegistrar:
             )
 
     def _table_store_type_version(self, data_token: DataToken) -> tuple[str, int]:
-        if not self._db_adapter.has_table(TableReference.data_token):
+        if not self._db_adapter.has_group_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         else:
             columns = [
@@ -307,7 +307,7 @@ class DatabaseRegistrar:
     def _definition_reference_version(
         self, store_type: str, store_version: int
     ) -> tuple[DataToken, int]:
-        if not self._db_adapter.has_table(StoreReference.data_token):
+        if not self._db_adapter.has_group_table(StoreReference.data_token):
             raise DatabaseCorruptionError("StoreReference table is missing")
         else:
             columns = [
@@ -336,7 +336,7 @@ class DatabaseRegistrar:
     def _store_definition(
         self, reference_token: DataToken, definition_version: int
     ) -> StoreDefinition:
-        if not self._db_adapter.has_table(reference_token):
+        if not self._db_adapter.has_group_table(reference_token):
             raise DatabaseCorruptionError(f"{reference_token} table is missing")
         else:
             if definition_version > 1:
@@ -358,7 +358,7 @@ class DatabaseRegistrar:
         reference_token, _ = self._definition_reference_version(
             store_type, store_version
         )
-        self._db_adapter.drop_table(reference_token)
+        self._db_adapter.drop_group_table(reference_token)
         criteria = (TableReference.table_name == reference_token.table_name) & (
             TableReference.data_group == reference_token.data_group
         )

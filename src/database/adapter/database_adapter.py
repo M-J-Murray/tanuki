@@ -23,10 +23,10 @@ class DatabaseAdapter:
     def create_group(self: DatabaseAdapter, data_group: str) -> None:
         raise NotImplementedError()
 
-    def has_table(self: DatabaseAdapter, data_token: DataToken) -> bool:
+    def has_group_table(self: DatabaseAdapter, data_token: DataToken) -> bool:
         raise NotImplementedError()
 
-    def create_table(
+    def create_group_table(
         self: DatabaseAdapter, data_token: DataToken, data_store_type: type[T]
     ) -> None:
         raise NotImplementedError()
@@ -34,7 +34,7 @@ class DatabaseAdapter:
     def drop_group(self: DatabaseAdapter, data_group: str) -> None:
         raise NotImplementedError()
 
-    def drop_table(self: DatabaseAdapter, data_token: DataToken) -> None:
+    def drop_group_table(self: DatabaseAdapter, data_token: DataToken) -> None:
         raise NotImplementedError()
 
     def query(
@@ -42,7 +42,7 @@ class DatabaseAdapter:
         data_token: DataToken,
         query: Optional[Query] = None,
         columns: Optional[list[str]] = None,
-    ) -> Any:
+    ) -> list[tuple]:
         raise NotImplementedError()
 
     def insert(

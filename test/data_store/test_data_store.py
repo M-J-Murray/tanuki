@@ -182,7 +182,7 @@ class TestDataStore:
         assert_that(actual.a.tolist(), equal_to(["a", "b", "c", "d"]))
         assert_that(actual.b.tolist(), equal_to([1, 2, 3, 4]))
         assert_that(actual.c.tolist(), equal_to([True, False, True, False]))
-        
+
         expected = ExampleStore(
             a=["a", "b", "c", "d"], b=[1, 2, 3, 4], c=[True, False, True, False]
         )
@@ -194,12 +194,11 @@ class TestDataStore:
         assert_that(actual.a.tolist(), equal_to(["a", "b", "c", "d"]))
         assert_that(actual.b.tolist(), equal_to([1, 2, 3, 4]))
         assert_that(actual.c.tolist(), equal_to([True, False, True, False]))
-        
+
         expected = ExampleStore(
             a=["a", "b", "c", "d"], b=[1, 2, 3, 4], c=[True, False, True, False]
         )
         assert_that(actual.equals(expected), is_(True))
-
 
     def test_reset_index(self) -> None:
         test_slice = self.test_store.iloc[[0, 2]]
@@ -293,6 +292,16 @@ class TestDataStore:
         types = [String, Int64, Boolean]
         for actual_column, expected_name, expected_type in zip(
             self.test_store.columns, columns, types
+        ):
+            assert_that(type(actual_column), equal_to(ColumnAlias))
+            assert_that(str(actual_column), equal_to(expected_name))
+            assert_that(actual_column.dtype, equal_to(expected_type))
+
+        test_store2 = ExampleStore(b=[1, 2, 3], c=[True, False, True])
+        columns = ["b", "c"]
+        types = [Int64, Boolean]
+        for actual_column, expected_name, expected_type in zip(
+            test_store2.columns, columns, types
         ):
             assert_that(type(actual_column), equal_to(ColumnAlias))
             assert_that(str(actual_column), equal_to(expected_name))

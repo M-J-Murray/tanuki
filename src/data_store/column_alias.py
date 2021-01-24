@@ -32,7 +32,7 @@ builtins.sum = sum
 
 
 class ColumnAlias:
-    _name: Optional[str]
+    name: Optional[str]
     dtype: DataType
     __origin__: type = Column
     __args__: tuple[DataType]
@@ -42,7 +42,7 @@ class ColumnAlias:
         self.dtype = DataType(dtype)
         self.__args__ = (self.dtype,)
         self.__parameters__ = (self.dtype,)
-        self._name = name
+        self.name = name
 
     def __call__(
         self, data: Optional[list] = None, index: Optional[list] = None
@@ -50,18 +50,18 @@ class ColumnAlias:
         return Column(data=data, dtype=self.dtype, index=index)
 
     def __str__(self) -> str:
-        if self._name is None:
+        if self.name is None:
             raise ValueError("Column name not set")
-        return self._name
+        return self.name
 
     def __repr__(self) -> str:
         repr_def = f"{Column.__name__}[{self.dtype.__name__}]"
-        if self._name is not None:
-            repr_def = f"{self._name}: {repr_def}"
+        if self.name is not None:
+            repr_def = f"{self.name}: {repr_def}"
         return repr_def
 
     def __hash__(self) -> int:
-        if self._name is None:
+        if self.name is None:
             raise UnsupportedOperation("Cannot hash Column outside of DataStore")
         return hash(str(self))
 

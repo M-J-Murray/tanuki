@@ -1,4 +1,4 @@
-from enum import Enum
+from __future__ import annotations
 
 from src.data_store.data_type import (
     Boolean,
@@ -22,7 +22,7 @@ from src.data_store.data_type import (
 )
 
 
-class Sqlite3Type(str, Enum):
+class Sqlite3Type:
     TEXT = "TEXT"
     INTEGER = "INTEGER"
     REAL = "REAL"
@@ -49,9 +49,10 @@ class Sqlite3Type(str, Enum):
         object: BLOB,
     }
 
-    def __call__(self, data_type: DataType) -> str:
+    def __new__(cls: type[Sqlite3Type], data_type: DataType):
         while isinstance(data_type, TypeAlias):
             data_type = data_type.pdtype()
-        if data_type not in self._mappings:
+        if data_type not in cls._mappings:
             raise ValueError(f"Sqlite3 does not support type {data_type}")
-        return self._mappings[data_type]
+        return cls._mappings[data_type]
+

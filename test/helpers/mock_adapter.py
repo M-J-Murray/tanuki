@@ -28,18 +28,25 @@ class MockAdapter(DatabaseAdapter):
     def create_group(self: MockAdapter, data_group: str) -> None:
         self.group_tables[data_group] = {}
 
-    def has_table(self: MockAdapter, data_token: DataToken) -> bool:
+    def has_group_table(self: MockAdapter, data_token: DataToken) -> bool:
         return (
             self.has_group(data_token.data_group)
             and data_token.table_name in self.group_tables[data_token.data_group]
         )
 
-    def create_table(
+    def create_group_table(
         self: MockAdapter, data_token: DataToken, data_store_type: type[DataStore]
     ) -> None:
         self.group_tables[data_token.data_group][
             data_token.table_name
         ] = data_store_type().to_pandas()
+
+    
+    def drop_group(self: MockAdapter, data_group: str) -> None:
+        del self.group_tables[data_group]
+
+    def drop_group_table(self: MockAdapter, data_token: DataToken) -> None:
+        del self.group_tables[data_token.data_group][data_token.table_name]
 
     def insert(
         self: MockAdapter,
@@ -116,9 +123,3 @@ class MockAdapter(DatabaseAdapter):
     ) -> None:
         data = self.group_tables[data_token.data_group][data_token.table_name]
         self.group_tables[data_token.data_group][data_token.table_name] = data.drop(indices)
-
-    def drop_group(self: MockAdapter, data_group: str) -> None:
-        del self.group_tables[data_group]
-
-    def drop_table(self: MockAdapter, data_token: DataToken) -> None:
-        del self.group_tables[data_token.data_group][data_token.table_name]

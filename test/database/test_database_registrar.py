@@ -281,5 +281,5 @@ class TestDatabaseRegistrar:
         assert_that(actual.test_method(), equal_to("test_result"))
 
         for actual, expected in zip(store_class.columns, ExampleStore.columns):
-            assert_that(actual._name, equal_to(expected._name))
+            assert_that(actual.name, equal_to(expected.name))
             assert_that(actual.dtype, equal_to(expected.dtype))

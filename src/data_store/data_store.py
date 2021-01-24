@@ -36,9 +36,12 @@ class DataStore:
     version: ClassVar[int]
     columns: ClassVar[list[ColumnAlias]]
 
+    columns: list[ColumnAlias]
     _data_backend: B
     loc: DataStore._LocIndexer[T]
     iloc: DataStore._ILocIndexer[T]
+
+    idx: Column[int]
 
     def __init_subclass__(
         cls: Type[T], version: int = 1, register: bool = True
@@ -52,26 +55,27 @@ class DataStore:
         cls.columns = []
         for name, col in cls._parse_columns().items():
             cls.columns.append(col)
-            col._name = name
+            col.name = name
             setattr(cls, name, col)
         if register:
             DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
-        self: T, index: Optional[list] = None, **column_data: dict[str, Column]
+        self: T, idx: Optional[list] = None, **column_data: dict[str, list]
     ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self._data_backend = PandasBackend(column_data, index=index)
+            self._data_backend = PandasBackend(column_data, index=idx)
             self._validate_data_frame()
         else:
-            self._data_backend = PandasBackend(index=index)
+            self._data_backend = PandasBackend(index=idx)
         self._compile()
 
     def _compile(self: T) -> None:
         self._attach_columns()
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
+        self.columns = list(self._active_columns.values())
         self.loc = DataStore._LocIndexer[T](self)
         self.iloc = DataStore._ILocIndexer[T](self)
 

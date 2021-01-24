@@ -92,6 +92,14 @@ class SqlStatement:
         )
         return self
 
+    def ATTACH_DATABASE(self: "SqlStatement", file_path: str, data_group: str) -> "SqlStatement":
+        self._commands.append(f"ATTACH DATABASE '{file_path}/{data_group}.db'")
+        return self
+
+    def DETACH_DATABASE(self: "SqlStatement", data_group: str) -> "SqlStatement":
+        self._commands.append(f"DETACH DATABASE {data_group}")
+        return self
+
     def CREATE_SCHEMA(self: "SqlStatement", data_group: str) -> "SqlStatement":
         self._commands.append(f"CREATE SCHEMA {data_group}")
         return self
@@ -241,7 +249,7 @@ class SqlStatement:
         return self
 
     def compile(self: "SqlStatement") -> str:
-        return " ".join(self._commands)
+        return " ".join(self._commands) + ";"
 
     def __str__(self: "SqlStatement") -> str:
         return self.compile()

@@ -22,7 +22,7 @@ class PandasBackend(DataBackend):
 
     def __init__(
         self,
-        data: Optional[Union(Series, DataFrame, dict[str, Column])] = None,
+        data: Optional[Union(Series, DataFrame, dict[str, list])] = None,
         index: Optional[Iterable] = None,
     ) -> None:
         if data is None:
@@ -32,12 +32,12 @@ class PandasBackend(DataBackend):
         elif type(data) is DataFrame:
             self._data = DataFrame(data, index=index)
         elif type(data) is dict:
-            values = next(iter(data.values()))
-            if type(values) is not list:
+            sample_value = next(iter(data.values()))
+            if not isinstance(sample_value, Iterable):
                 self._data = Series(data, index=index)
-            elif len(values) > 1:
+            elif len(sample_value) > 1:
                 self._data = DataFrame(data, index=index)
-            elif len(values) == 1:
+            elif len(sample_value) == 1:
                 self._data = DataFrame(data, index=index).iloc[0]
             else:
                 self._data = DataFrame(data, index=index)

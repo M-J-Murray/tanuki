@@ -27,7 +27,7 @@ class PandasQueryCompiler(QueryCompiler[DataFrame]):
         self: "PandasQueryCompiler", parameter: Union[Any, ColumnAlias]
     ) -> Any:
         if type(parameter) is ColumnAlias:
-            return self._data_frame[parameter._name]
+            return self._data_frame[parameter.name]
         else:
             return parameter
 
