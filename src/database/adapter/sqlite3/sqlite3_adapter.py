@@ -109,7 +109,12 @@ class Sqlite3Adapter(DatabaseAdapter):
         with self._connection:
             cursor = self._connection.execute(statement.compile())
             data_rows = cursor.fetchall()
-            col_names = [col_desc[0] for col_desc in cursor.description]
+            col_names = []
+            for col_desc in cursor.description:
+                col_name = col_desc[0]
+                if col_name == "idx":
+                    col_name = "index"
+                col_names.append(col_name)
             column_data = list(zip(*data_rows))
             return {name: data for name, data in zip(col_names, column_data)}
 

@@ -2,12 +2,12 @@ from test.helpers.example_store import ExampleStore
 from test.helpers.sqlite3_container import Sqlite3Container
 
 from hamcrest import assert_that, equal_to
-from pytest import fail
 
-from src.data_store.column import Column
-from src.data_store.data_store import DataStore
 from src.database.data_token import DataToken
 from src.database.sqlite3_database import Sqlite3Database
+import tempfile
+from pathlib import Path
+import shutil
 
 
 class TestAcceptance:
@@ -15,7 +15,11 @@ class TestAcceptance:
 
     @classmethod
     def setup_class(cls) -> None:
-        cls.sql_db = Sqlite3Container()
+        tmp_db_dir = Path(tempfile.gettempdir()) / "tanuki_test"
+        if tmp_db_dir.exists():
+            shutil.rmtree(tmp_db_dir, ignore_errors=True)
+        tmp_db_dir.mkdir()
+        cls.sql_db = Sqlite3Container(tmp_db_dir)
 
     def teardown_method(self) -> None:
         self.sql_db.reset()
@@ -24,6 +28,9 @@ class TestAcceptance:
     def teardown_class(cls) -> None:
         cls.sql_db.stop()
 
+    # TODO: Determine row behaviour for data stores
+    # Change index behaviour to either set column as index, or define own index
+    # Fix this damn test!
     def test_create_insert_query_data(self) -> None:
         insert_store = ExampleStore(
             a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]

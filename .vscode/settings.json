@@ -7,7 +7,7 @@
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.testing.pytestArgs": [
-        "test"
+        "."
     ],
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/michael/.cache/pypoetry/virtualenvs/tanuki-cRa5dlQy-py3.9/bin/python",

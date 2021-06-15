@@ -101,8 +101,8 @@ class TestDataStore:
 
     def test_single_row(self) -> None:
         example_row = ExampleStore(a=["a"], b=[1])
-        assert_that(example_row.a, equal_to("a"))
-        assert_that(example_row.b, equal_to(1))
+        assert_that(example_row.a, equal_to(["a"]))
+        assert_that(example_row.b, equal_to([1]))
 
         example_row = ExampleStore(a="a", b=1)
         assert_that(example_row.a, equal_to("a"))
@@ -308,6 +308,7 @@ class TestDataStore:
             assert_that(actual_column.dtype, equal_to(expected_type))
 
     def test_iter(self) -> None:
+        # Test dataframe
         columns = ["a", "b", "c"]
         types = [String, Int64, Boolean]
         for actual_column, expected_name, expected_type in zip(
@@ -316,6 +317,17 @@ class TestDataStore:
             assert_that(type(actual_column), equal_to(ColumnAlias))
             assert_that(str(actual_column), equal_to(expected_name))
             assert_that(actual_column.dtype, equal_to(expected_type))
+
+        # # Test series
+        # test_row = ExampleStore(a="a", b=1, c=True)
+        # columns = ["a", "b", "c"]
+        # types = [String, Int64, Boolean]
+        # for actual_column, expected_name, expected_type in zip(
+        #     test_row, columns, types
+        # ):
+        #     assert_that(type(actual_column), equal_to(ColumnAlias))
+        #     assert_that(str(actual_column), equal_to(expected_name))
+        #     assert_that(actual_column.dtype, equal_to(expected_type))
 
     def test_iterows(self) -> None:
         for i, row in self.test_store.iterrows():

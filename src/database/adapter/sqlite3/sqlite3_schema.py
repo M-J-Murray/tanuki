@@ -10,9 +10,12 @@ class Sqlite3Schema(DatabaseSchema):
     _columns: list[str]
 
     def __init__(self, store_type: Type[T]) -> None:
-        self._columns = [
-            f"{col.name} {Sqlite3Type(col.dtype)}" for col in store_type.columns
-        ]
+        self._columns = []
+        for col in store_type.columns:
+            name = col.name
+            if name == "index":
+                name = "idx"
+            self._columns.append(f"{name} {Sqlite3Type(col.dtype)}")
 
     def __str__(self) -> str:
         return ", ".join(self._columns)

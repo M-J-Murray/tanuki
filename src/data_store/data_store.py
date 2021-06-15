@@ -41,7 +41,7 @@ class DataStore:
     loc: DataStore._LocIndexer[T]
     iloc: DataStore._ILocIndexer[T]
 
-    idx: Column[int]
+    index: Column[int]
 
     def __init_subclass__(
         cls: Type[T], version: int = 1, register: bool = True
@@ -55,20 +55,19 @@ class DataStore:
         cls.columns = []
         for name, col in cls._parse_columns().items():
             cls.columns.append(col)
-            col.name = name
             setattr(cls, name, col)
         if register:
             DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
-        self: T, idx: Optional[list] = None, **column_data: dict[str, list]
+        self: T, index: Optional[list] = None, **column_data: dict[str, list]
     ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self._data_backend = PandasBackend(column_data, index=idx)
+            self._data_backend = PandasBackend(column_data, index=index)
             self._validate_data_frame()
         else:
-            self._data_backend = PandasBackend(index=idx)
+            self._data_backend = PandasBackend(index=index)
         self._compile()
 
     def _compile(self: T) -> None:
@@ -136,7 +135,11 @@ class DataStore:
         for name, col in variables.items():
             if col is Column or type(col) is Column:
                 missing_types.append(name)
-            elif col is ColumnAlias or type(col) is ColumnAlias:
+            elif col is ColumnAlias:
+                columns[name] = col
+            elif type(col) is ColumnAlias:
+                col: ColumnAlias
+                col.name = name
                 columns[name] = col
         if len(missing_types) > 0:
             raise TypeError(
@@ -292,10 +295,10 @@ class DataStore:
             result = self.from_backend(result)
         return result
 
-    # def __getattr__(self: T, name: str) -> Any:
-    #     raise AttributeError(
-    #         f"Could not match '{name}' to {self.__class__.__name__} column"
-    #     )
+    def __getattr__(self: T, name: str) -> Any:
+        raise AttributeError(
+            f"Could not match '{name}' to {self.__class__.__name__} column"
+        )
 
     def set_index(self: T, column: Union[str, Iterable]) -> T:
         return self.from_backend(self._data_backend.set_index(column))

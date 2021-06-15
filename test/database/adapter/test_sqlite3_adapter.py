@@ -20,7 +20,8 @@ class TestSqlite3Adapter:
 
     def setup_method(self) -> None:
         self.tmp_db_dir = Path(tempfile.gettempdir()) / "tanuki_test"
-        shutil.rmtree(self.tmp_db_dir, ignore_errors=True)
+        if self.tmp_db_dir.exists():
+            shutil.rmtree(self.tmp_db_dir, ignore_errors=True)
         self.tmp_db_dir.mkdir()
         self.sql_db = Sqlite3Container(self.tmp_db_dir)
         self.db_adapter = Sqlite3Adapter(self.sql_db.connection_config())

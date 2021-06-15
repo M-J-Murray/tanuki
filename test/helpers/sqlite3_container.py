@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import sqlite3
 from sqlite3 import Connection
 from test.helpers.database_container import DatabaseContainer
@@ -30,4 +31,4 @@ class Sqlite3Container(DatabaseContainer):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
-            self._db_path.unlink()
+            shutil.rmtree(self._db_path)

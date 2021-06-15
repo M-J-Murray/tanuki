@@ -33,12 +33,19 @@ class PandasBackend(DataBackend):
             self._data = DataFrame(data, index=index)
         elif type(data) is dict:
             sample_value = next(iter(data.values()))
-            if not isinstance(sample_value, Iterable):
-                self._data = Series(data, index=index)
-            elif len(sample_value) > 1:
-                self._data = DataFrame(data, index=index)
-            elif len(sample_value) == 1:
-                self._data = DataFrame(data, index=index).iloc[0]
+            if (
+                not isinstance(sample_value, Iterable)
+                or isinstance(sample_value, str)
+                or len(sample_value) == 1
+            ):
+                if index is not None:
+                    
+                if "index" not in data:
+                    if index is None:
+                        data["index"] = 0
+                    else index is None and :
+                    index = 0
+                self._data = Series(data)
             else:
                 self._data = DataFrame(data, index=index)
         else:
@@ -145,14 +152,24 @@ class PandasBackend(DataBackend):
         return len(self._data)
 
     def __iter__(self) -> Generator[str, None, None]:
-        return iter(self._data)
+        data = self._data
+        if self.is_row():
+            data = DataFrame([self._data], columns=self._data.index)
+        return iter(data)
 
     def iterrows(self) -> Generator[tuple[int, PandasBackend], None, None]:
-        for i, row in self._data.iterrows():
+        data = self._data
+        if self.is_row():
+            data = DataFrame([self._data], columns=self._data.index)
+        for i, row in data.iterrows():
             yield (i, PandasBackend(row))
 
     def itertuples(self):
-        return self._data.itertuples()
+        data = self._data
+        if self.is_row():
+            data = DataFrame([self._data], columns=self._data.index)
+        for _, values in data.itertuples():
+            yield values
 
     def __getitem__(self, item: Union[str, list[bool]]) -> Any:
         result = self._data[item]
