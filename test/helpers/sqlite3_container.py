@@ -1,34 +1,26 @@
 from pathlib import Path
 import shutil
-import sqlite3
-from sqlite3 import Connection
 from test.helpers.database_container import DatabaseContainer
-from typing import Optional
 
 from src.database.connection_config import ConnectionConfig
 
 
 class Sqlite3Container(DatabaseContainer):
-    _db_path: Path
-    _conn: Optional[Connection]
+    _db_dir: Path
 
-    def __init__(self, db_path: str) -> None:
-        self._db_path = Path(db_path)
-        self._conn = None
+    def __init__(self, db_dir: str) -> None:
+        self._db_dir = Path(db_dir)
 
     def connection_config(self) -> ConnectionConfig:
-        return ConnectionConfig.from_uri(self._db_path)
+        return ConnectionConfig.from_uri(self._db_dir)
 
     def start(self):
-        if self._conn is None:
-            self._conn = sqlite3.connect(self._db_path)
+        self._db_dir.mkdir(parents=True, exist_ok=True)
 
     def reset(self):
         self.stop()
         self.start()
 
     def stop(self):
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
-            shutil.rmtree(self._db_path)
+        if self._db_dir.exists():
+            shutil.rmtree(self._db_dir)

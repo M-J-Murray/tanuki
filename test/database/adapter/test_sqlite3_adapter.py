@@ -22,14 +22,13 @@ class TestSqlite3Adapter:
         self.tmp_db_dir = Path(tempfile.gettempdir()) / "tanuki_test"
         if self.tmp_db_dir.exists():
             shutil.rmtree(self.tmp_db_dir, ignore_errors=True)
-        self.tmp_db_dir.mkdir()
         self.sql_db = Sqlite3Container(self.tmp_db_dir)
+        self.sql_db.start()
         self.db_adapter = Sqlite3Adapter(self.sql_db.connection_config())
 
     def teardown_method(self) -> None:
         self.db_adapter.stop()
         self.sql_db.stop()
-        shutil.rmtree(self.tmp_db_dir)
 
     def test_create_group_table(self) -> None:
         token = ExampleStore.data_token
@@ -105,7 +104,7 @@ class TestSqlite3Adapter:
         self.db_adapter.insert(ExampleStore.data_token, test1)
 
         raw1 = self.db_adapter.query(ExampleStore.data_token)
-        queried1 = ExampleStore(**raw1)
+        queried1 = ExampleStore.from_rows(raw1)
         assert_that(queried1.equals(test1), is_(True))
 
     def test_update(self) -> None:

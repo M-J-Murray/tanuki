@@ -15,7 +15,7 @@ from typing import (
     Union,
 )
 
-from pandas import DataFrame, Index, Series
+from pandas import DataFrame, Series
 
 from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
@@ -83,7 +83,7 @@ class DataStore:
         from src.data_backend.database_backend import DatabaseBackend
 
         return cls.from_backend(
-            DatabaseBackend(database, data_token, read_only=read_only), validate=False
+            DatabaseBackend[T](cls, database, data_token, read_only=read_only), validate=False
         )
 
     @classmethod
@@ -287,11 +287,11 @@ class DataStore:
             elif value_type is Boolean:
                 result = self._get_mask(item)
             else:
-                result = self._data_backend[item]
+                raise RuntimeError(f"Unknown get item request: {item}")
         elif issubclass(type(item), Query):
             result = self._data_backend.query(item)
         else:
-            result = self._data_backend[item]
+            raise RuntimeError(f"Unknown get item request: {item}")
 
         if issubclass(type(result), DataBackend):
             result = self.from_backend(result)

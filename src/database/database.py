@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, Union, cast, Optional, Type, TypeVar
+from typing import Any, cast, Optional, Type, TypeVar, Union
 
 from pandas import Index
 
 from src.data_store.column_alias import ColumnAlias
+from src.data_store.data_type import DataType
 from src.data_store.query import Query
 
 from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
 from .database_registrar import DatabaseRegistrar
-from .db_exceptions import MissingGroupError, MissingTableError
+from .db_exceptions import MissingTableError
 
 Indexible = Union[Any, list, Index]
 
@@ -27,6 +28,10 @@ class Database:
     def table_columns(self, data_token: DataToken) -> list[str]:
         col_ids = self._registrar.store_class(data_token).columns
         return [str(col_id) for col_id in col_ids]
+
+    def table_dtypes(self, data_token: DataToken) -> dict[str, DataType]:
+        store_class = self._registrar.store_class(data_token)
+        return {column.name: column.dtype for column in store_class.columns}
 
     def has_table(self, data_token: DataToken) -> bool:
         return self._registrar.has_table(data_token)
@@ -130,6 +135,9 @@ class Database:
         target_data_token: DataToken,
     ) -> None:
         self._registrar.copy_table(source_data_token, target_data_token)
+
+    def row_count(self, data_token: DataToken) -> int:
+        return self._db_adapter.row_count(data_token)
 
     def __enter__(self: Database) -> Database:
         return self

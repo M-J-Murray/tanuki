@@ -96,7 +96,12 @@ class Sqlite3Adapter(DatabaseAdapter):
     ) -> list[tuple]:
         statement = SqlStatement()
         if columns is not None:
-            statement.SELECT(*columns)
+            clean = []
+            for column in columns:
+                if column == "index":
+                    column = "idx"
+                clean.append(column)
+            statement.SELECT(*clean)
         else:
             statement.SELECT_ALL()
 
@@ -109,12 +114,6 @@ class Sqlite3Adapter(DatabaseAdapter):
         with self._connection:
             cursor = self._connection.execute(statement.compile())
             data_rows = cursor.fetchall()
-            col_names = []
-            for col_desc in cursor.description:
-                col_name = col_desc[0]
-                if col_name == "idx":
-                    col_name = "index"
-                col_names.append(col_name)
             return data_rows
 
     def insert(
@@ -131,9 +130,13 @@ class Sqlite3Adapter(DatabaseAdapter):
             values = ["?" for _ in range(len(data_store.columns))]
             if not ignore_index:
                 values = ["?"] + values
-            values = ", ".join(values)
+            statement = (
+                SqlStatement()
+                .INSERT_INTO(data_token, columns)
+                .VALUES(values, quote=False)
+            )
             self._connection.executemany(
-                f"INSERT INTO {data_token} ({columns}) values ({values})",
+                statement.compile(),
                 data_store.itertuples(ignore_index=ignore_index),
             )
 
@@ -162,6 +165,12 @@ class Sqlite3Adapter(DatabaseAdapter):
         indices: Indexible,
     ) -> None:
         raise NotImplementedError()
+
+    def row_count(self: Sqlite3Adapter, data_token: DataToken) -> int:
+        with self._connection:
+            statement = SqlStatement().SELECT().COUNT().FROM(data_token)
+            cursor = self._connection.execute(statement.compile())
+            return cursor.fetchone()[0]
 
     def stop(self: "Sqlite3Adapter") -> None:
         self._connection.close()

@@ -80,7 +80,16 @@ class MockAdapter(DatabaseAdapter):
                 data = data[query]
         if columns is not None:
             data = data[columns]
-        return [row for row in data.itertuples()]
+        if columns is None or "index" in columns:
+            return [row for row in data.itertuples()]
+        else:
+            result = []
+            for row in data.itertuples():
+                if len(row) == 2:
+                    result.append((row[1],))
+                else:
+                    result.append(row[1:])
+            return result
 
     def update(
         self: MockAdapter,

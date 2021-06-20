@@ -11,11 +11,6 @@ Indexible = Union[Any, list, Index]
 
 
 class DatabaseAdapter:
-    def commit(self: DatabaseAdapter) -> None:
-        raise NotImplementedError()
-
-    def rollback(self: DatabaseAdapter) -> None:
-        raise NotImplementedError()
 
     def has_group(self: DatabaseAdapter, data_group: str) -> bool:
         raise NotImplementedError()
@@ -77,6 +72,9 @@ class DatabaseAdapter:
         data_token: DataToken,
         indices: Indexible,
     ) -> None:
+        raise NotImplementedError()
+
+    def row_count(self: DatabaseAdapter, data_token: DataToken) -> int:
         raise NotImplementedError()
 
     def stop(self: DatabaseAdapter) -> None:

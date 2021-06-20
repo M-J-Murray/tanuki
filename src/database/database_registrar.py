@@ -102,7 +102,7 @@ class DatabaseRegistrar:
         if self._is_table_protected(data_token):
             raise UnsupportedOperation("Cannot delete from protected data group")
         self._db_adapter.drop_group_table(data_token)
-        _, store_type, store_version = self._table_store_type_version(data_token)
+        store_type, store_version = self._table_store_type_version(data_token)
 
         store_type_version_count = sum(
             (TableReference.store_type == store_type)
@@ -286,7 +286,7 @@ class DatabaseRegistrar:
                 raise DatabaseCorruptionError(
                     f"Duplicate table references found for {data_token}"
                 )
-            return table_rows[0][1]
+            return table_rows[0][0]
 
     def _group_contains_protected_tables(self, data_group: str) -> bool:
         if not self.has_group(data_group):
@@ -297,7 +297,7 @@ class DatabaseRegistrar:
                 TableReference.data_token, criteria, [str(TableReference.protected)]
             )
             return any([
-                item[1] 
+                item[0] 
                 for item in table_rows
             ])
 

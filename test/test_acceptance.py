@@ -20,6 +20,7 @@ class TestAcceptance:
             shutil.rmtree(tmp_db_dir, ignore_errors=True)
         tmp_db_dir.mkdir()
         cls.sql_db = Sqlite3Container(tmp_db_dir)
+        cls.sql_db.start()
 
     def teardown_method(self) -> None:
         self.sql_db.reset()
@@ -28,9 +29,6 @@ class TestAcceptance:
     def teardown_class(cls) -> None:
         cls.sql_db.stop()
 
-    # TODO: Determine row behaviour for data stores
-    # Change index behaviour to either set column as index, or define own index
-    # Fix this damn test!
     def test_create_insert_query_data(self) -> None:
         insert_store = ExampleStore(
             a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]
@@ -42,8 +40,9 @@ class TestAcceptance:
             db.insert(data_token, insert_store)
 
             query_store = ExampleStore.link(db, data_token)
-            query_mask = query_store.b > 2
+            len(query_store)
+            query_mask = query_store.b >= 2
             actual = query_store[query_mask]
 
-        expected = ExampleStore(a=["b", "c"], b=[2, 3], c=[False, True])
+        expected = ExampleStore(index=[1, 2], a=["b", "c"], b=[2, 3], c=[False, True])
         assert_that(actual, expected)

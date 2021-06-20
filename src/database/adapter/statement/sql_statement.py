@@ -43,13 +43,15 @@ class SqlStatement:
         self._commands.append(f"INSERT INTO {data_token}")
         return self
 
-    def VALUES(self: "SqlStatement", values: Tuple[Any, ...]) -> "SqlStatement":
+    def VALUES(self: "SqlStatement", values: Tuple[Any, ...], quote: bool = True) -> "SqlStatement":
         adapted_values = []
         for val in values:
             if val is None:
                 adapted_values.append("NULL")
-            else:
+            elif quote:
                 adapted_values.append(f"'{val}'")
+            else:
+                adapted_values.append(str(val))
         str_def = ", ".join(adapted_values)
         self._commands.append(f"VALUES ({str_def})")
         return self

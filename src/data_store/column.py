@@ -48,11 +48,15 @@ class Column(Generic[T]):
     ) -> None:
         self.name = name
         if data is not None:
-            if isinstance(data, PandasBackend):
+            if issubclass(type(data), DataBackend):
                 self._data_backend = data
             else:
                 self._data_backend = PandasBackend({name: data}, index=index)
-            self.dtype = self.infer_dtype(self.name, self._data_backend) if dtype is None else DataType(dtype)
+            self.dtype = (
+                self.infer_dtype(self.name, self._data_backend)
+                if dtype is None
+                else DataType(dtype)
+            )
         else:
             self._data_backend = PandasBackend(index=index)
             self.dtype = Object
@@ -131,9 +135,7 @@ class Column(Generic[T]):
 
     def reset_index(self: Column[T], drop: bool = False) -> Column[T]:
         return Column(
-            self.name,
-            self._data_backend.reset_index(drop=drop),
-            dtype=self.dtype
+            self.name, self._data_backend.reset_index(drop=drop), dtype=self.dtype
         )
 
     def first(
@@ -142,7 +144,7 @@ class Column(Generic[T]):
         return Column(
             self.name,
             self._data_backend.iloc[self.index[offset : offset + n]],
-            dtype=self.dtype
+            dtype=self.dtype,
         )
 
     def equals(self: Column[T], other: Any) -> bool:

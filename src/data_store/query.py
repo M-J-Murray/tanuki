@@ -40,6 +40,12 @@ class Query:
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         raise NotImplementedError()
 
+    def __str__(self) -> str:
+        raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        raise NotImplementedError()
+
 
 @dataclass
 class EqualsQuery(Query):
@@ -50,6 +56,12 @@ class EqualsQuery(Query):
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
         return query_compiler.EQUALS(EqualsQuery(a, b))
+
+    def __str__(self) -> str:
+        return f"{self.a} == {self.b}"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 @dataclass
@@ -62,6 +74,12 @@ class NotEqualsQuery(Query):
         b = query_compiler.compile(self.b)
         return query_compiler.NOT_EQUALS(NotEqualsQuery(a, b))
 
+    def __str__(self) -> str:
+        return f"{self.a} != {self.b}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 @dataclass
 class GreaterThanQuery(Query):
@@ -72,6 +90,12 @@ class GreaterThanQuery(Query):
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
         return query_compiler.GREATER_THAN(GreaterThanQuery(a, b))
+
+    def __str__(self) -> str:
+        return f"{self.a} > {self.b}"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 @dataclass
@@ -84,6 +108,12 @@ class GreaterEqualQuery(Query):
         b = query_compiler.compile(self.b)
         return query_compiler.GREATER_EQUAL(GreaterEqualQuery(a, b))
 
+    def __str__(self) -> str:
+        return f"{self.a} >= {self.b}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 @dataclass
 class LessThanQuery(Query):
@@ -94,6 +124,12 @@ class LessThanQuery(Query):
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
         return query_compiler.LESS_THAN(LessThanQuery(a, b))
+
+    def __str__(self) -> str:
+        return f"{self.a} < {self.b}"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 @dataclass
@@ -106,6 +142,13 @@ class LessEqualQuery(Query):
         b = query_compiler.compile(self.b)
         return query_compiler.LESS_EQUAL(LessEqualQuery(a, b))
 
+    def __str__(self) -> str:
+        return f"{self.a} <= {self.b}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
 @dataclass
 class RowCountQuery(Query):
     a: Union[Iterable, Query]
@@ -114,6 +157,13 @@ class RowCountQuery(Query):
         a = query_compiler.compile(self.a)
         return query_compiler.COUNT(RowCountQuery(a))
 
+    def __str__(self) -> str:
+        return f"len({self.a})"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
 @dataclass
 class SumQuery(Query):
     a: Union[Iterable, Query]
@@ -121,6 +171,12 @@ class SumQuery(Query):
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
         return query_compiler.SUM(RowCountQuery(a))
+
+    def __str__(self) -> str:
+        return f"sum({self.a})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 @dataclass
@@ -133,6 +189,12 @@ class AndQuery(Query):
         b = query_compiler.compile(self.b)
         return query_compiler.AND(AndQuery(a, b))
 
+    def __str__(self) -> str:
+        return f"({self.a}) and ({self.b})"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 @dataclass
 class OrQuery(Query):
@@ -143,6 +205,12 @@ class OrQuery(Query):
         a = query_compiler.compile(self.a)
         b = query_compiler.compile(self.b)
         return query_compiler.OR(OrQuery(a, b))
+
+    def __str__(self) -> str:
+        return f"({self.a}) or ({self.b})"
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 from src.database.adapter.query.query_compiler import QueryCompiler

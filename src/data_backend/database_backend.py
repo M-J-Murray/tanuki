@@ -1,52 +1,79 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Type, Union
+from typing import Any, Generic, Iterable, Optional, Type, TypeVar, Union
 
+import numpy as np
 from pandas import Index
 from pandas.core.frame import DataFrame
 
-from src.data_store.column import Column
-from src.data_store.query import Query
+from src.data_backend.pandas_backend import PandasBackend
+from src.data_store.data_store import DataStore
+from src.data_store.query import (
+    EqualsQuery,
+    GreaterEqualQuery,
+    GreaterThanQuery,
+    LessEqualQuery,
+    LessThanQuery,
+    NotEqualsQuery,
+    Query,
+)
 from src.database.data_token import DataToken
 from src.database.database import Database
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
+T = TypeVar("T", bound=DataStore)
 
-class DatabaseBackend(DataBackend):
+
+class DatabaseBackend(Generic[T], DataBackend):
+    _store_class: Type[T]
     _database: Database
     _data_token: DataToken
     _read_only: bool
+
+    _selected_columns: list[str]
 
     _loc: _LocIndexer
     _iloc: _ILocIndexer
 
     def __init__(
         self: "DatabaseBackend",
+        store_class: Type[T],
         database: Database,
         data_token: DataToken,
+        selected_columns: Optional[list[str]] = None,
         read_only: bool = True,
     ) -> None:
+        self._store_class = store_class
         self._database = database
         self._data_token = data_token
         self._read_only = read_only
+
+        if selected_columns is None:
+            self._selected_columns = self._database.table_columns(self._data_token)
+        else:
+            self._selected_columns = selected_columns
 
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
     def to_pandas(self) -> DataFrame:
-        raise NotImplementedError()
+        return self.query()
 
     @property
     def columns(self) -> list[str]:
-        return self._database.table_columns(self._data_token)
+        return self._selected_columns
 
-    def to_dict(self, orient) -> dict[str, any]:
+    @property
+    def dtypes(self) -> dict[str, type]:
+        return self._database.table_dtypes(self._data_token)
+
+    def to_dict(self) -> dict[str, any]:
         raise NotImplementedError()
 
     @property
     def index(self) -> Index:
-        return self._data.index
+        return self["index"]
 
     @property
     def loc(self: DatabaseBackend) -> LocIndexer[DatabaseBackend]:
@@ -56,14 +83,39 @@ class DatabaseBackend(DataBackend):
     def iloc(self: DatabaseBackend) -> ILocIndexer[DatabaseBackend]:
         return self._iloc
 
-    def __eq__(self, other):
-        raise NotImplementedError()
-
     def equals(self, other):
         raise NotImplementedError()
 
+    def _build_query(self, other: Any, query_class: Type[Query]) -> Query:
+        query: Query = None
+        for column in self._selected_columns:
+            new_query = query_class(column, other)
+            if query is None:
+                query = new_query
+            else:
+                query = query and new_query
+        return query
+
+    def __eq__(self, other: Any) -> Query:
+        return self._build_query(other, EqualsQuery)
+
+    def __ne__(self, other: Any) -> Query:
+        return self._build_query(other, NotEqualsQuery)
+
+    def __gt__(self, other: Any) -> Query:
+        return self._build_query(other, GreaterThanQuery)
+
+    def __ge__(self, other: Any) -> Query:
+        return self._build_query(other, GreaterEqualQuery)
+
+    def __lt__(self, other: Any) -> Query:
+        return self._build_query(other, LessThanQuery)
+
+    def __le__(self, other: Any) -> Query:
+        return self._build_query(other, LessEqualQuery)
+
     def __len__(self):
-        raise NotImplementedError()
+        return self._database.row_count(self._data_token)
 
     def __iter__(self):
         raise NotImplementedError()
@@ -75,12 +127,33 @@ class DatabaseBackend(DataBackend):
         raise NotImplementedError()
 
     def __getitem__(self, item: str) -> Any:
-        raise NotImplementedError()
+        return DatabaseBackend(
+            self._store_class,
+            self._database,
+            self._data_token,
+            [item],
+            self._read_only,
+        )
 
-    def query(self, query: Query) -> DatabaseBackend:
-        raise NotImplementedError()
+    def getitems(self, items: list[str]) -> DatabaseBackend:
+        return DatabaseBackend(
+            self._store_class,
+            self._database,
+            self._data_token,
+            items,
+            self._read_only,
+        )
 
-    def __setitem__(self, item: str, value: Column) -> Column:
+    def getmask(self, mask: list[bool]) -> DatabaseBackend:
+        indices = np.where(mask)[0]
+        return self.query(self.index == indices)
+
+    def query(self, query: Optional[Query] = None) -> PandasBackend:
+        return self._database.query(
+            self._store_class, self._data_token, query, self._selected_columns
+        )
+
+    def __setitem__(self, item: str, value: Any) -> None:
         raise NotImplementedError()
 
     def set_index(
@@ -95,6 +168,12 @@ class DatabaseBackend(DataBackend):
         clt: DatabaseBackend, new_backend: DatabaseBackend, ignore_index: bool = False
     ) -> DatabaseBackend:
         raise NotImplementedError()
+
+    def __str__(self: DatabaseBackend) -> str:
+        return f"Database Link: {self._data_token}\nActive Columns: {self._selected_columns}"
+
+    def __repr__(self: DatabaseBackend) -> str:
+        return str(self)
 
     @classmethod
     def concat(
