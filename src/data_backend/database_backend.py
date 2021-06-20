@@ -37,8 +37,9 @@ class DatabaseBackend(DataBackend):
     def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
 
+    @property
     def columns(self) -> list[str]:
-        raise NotImplementedError()
+        return self._database.table_columns(self._data_token)
 
     def to_dict(self, orient) -> dict[str, any]:
         raise NotImplementedError()

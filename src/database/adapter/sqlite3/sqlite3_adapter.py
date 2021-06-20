@@ -115,8 +115,7 @@ class Sqlite3Adapter(DatabaseAdapter):
                 if col_name == "idx":
                     col_name = "index"
                 col_names.append(col_name)
-            column_data = list(zip(*data_rows))
-            return {name: data for name, data in zip(col_names, column_data)}
+            return data_rows
 
     def insert(
         self: Sqlite3Adapter,
@@ -125,13 +124,17 @@ class Sqlite3Adapter(DatabaseAdapter):
         ignore_index: bool = False,
     ) -> None:
         with self._connection:
-            columns = ["idx"] + [str(col) for col in data_store.columns]
+            columns = [str(col) for col in data_store.columns]
+            if not ignore_index:
+                columns = ["idx"] + columns
             columns = ", ".join(columns)
-            values = ["?"] + ["?" for _ in range(len(data_store.columns))]
+            values = ["?" for _ in range(len(data_store.columns))]
+            if not ignore_index:
+                values = ["?"] + values
             values = ", ".join(values)
             self._connection.executemany(
                 f"INSERT INTO {data_token} ({columns}) values ({values})",
-                data_store.itertuples(),
+                data_store.itertuples(ignore_index=ignore_index),
             )
 
     def update(

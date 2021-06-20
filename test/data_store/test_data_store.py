@@ -338,9 +338,9 @@ class TestDataStore:
     def test_itertuples(self) -> None:
         for i, a, b, c in self.test_store.itertuples():
             iloc_row = self.test_store.iloc[i]
-            assert_that(a, equal_to(iloc_row.a.values[0]))
-            assert_that(b, equal_to(iloc_row.b.values[0]))
-            assert_that(c, equal_to(iloc_row.c.values[0]))
+            assert_that(a, equal_to(iloc_row.a.item()))
+            assert_that(b, equal_to(iloc_row.b.item()))
+            assert_that(c, equal_to(iloc_row.c.item()))
 
     def test_str(self) -> None:
         expected = "ExampleStore\n       a  b      c\nindex             \n0      a  1   True\n1      b  2  False\n2      c  3   True"

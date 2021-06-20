@@ -58,6 +58,7 @@ class MockAdapter(DatabaseAdapter):
         combined = pd.concat(
             [existing, data_store.to_pandas()], ignore_index=ignore_index
         )
+        combined.index.name = data_store.index.name
         self.group_tables[data_token.data_group][data_token.table_name] = combined
 
     def query(
@@ -79,7 +80,7 @@ class MockAdapter(DatabaseAdapter):
                 data = data[query]
         if columns is not None:
             data = data[columns]
-        return [row[1:] for row in data.itertuples()]
+        return [row for row in data.itertuples()]
 
     def update(
         self: MockAdapter,
@@ -89,7 +90,7 @@ class MockAdapter(DatabaseAdapter):
     ) -> None:
         data = self.group_tables[data_token.data_group][data_token.table_name]
         data = data.set_index(alignment_columns)
-        new_data = data_store.to_table().to_pandas().set_index(alignment_columns)
+        new_data = data_store.to_pandas().set_index(alignment_columns)
         data.update(new_data)
         data = data.reset_index()
         self.group_tables[data_token.data_group][data_token.table_name] = data
@@ -102,7 +103,7 @@ class MockAdapter(DatabaseAdapter):
     ) -> None:
         data = self.group_tables[data_token.data_group][data_token.table_name]
         data = data.set_index(alignment_columns)
-        new_data = data_store.to_table().to_pandas().set_index(alignment_columns)
+        new_data = data_store.to_pandas().set_index(alignment_columns)
         data = pd.concat([data, new_data[~new_data.index.isin(data.index)]])
         data.update(new_data)
         data = data.reset_index()

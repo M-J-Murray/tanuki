@@ -83,7 +83,7 @@ class DataStore:
         from src.data_backend.database_backend import DatabaseBackend
 
         return cls.from_backend(
-            DatabaseBackend(database, data_token, read_only=read_only)
+            DatabaseBackend(database, data_token, read_only=read_only), validate=False
         )
 
     @classmethod
@@ -95,6 +95,8 @@ class DataStore:
         else:
             columns = [str(col) for col in columns]
         data = DataFrame.from_records(data_rows, columns=columns)
+        if "index" in data:
+            data = data.set_index("index")
         return cls.from_backend(PandasBackend(data))
 
     @classmethod
@@ -105,10 +107,11 @@ class DataStore:
         return self._data_backend.to_pandas()
 
     @classmethod
-    def from_backend(cls: Type[T], data_backend: B) -> T:
+    def from_backend(cls: Type[T], data_backend: B, validate: bool = True) -> T:
         instance = cls()
         instance._data_backend = data_backend
-        instance._validate_data_frame()
+        if validate:
+            instance._validate_data_frame()
         instance._compile()
         return instance
 
@@ -240,10 +243,11 @@ class DataStore:
 
     def iterrows(self: T) -> Generator[tuple[int, T], None, None]:
         for i, row in self._data_backend.iterrows():
+            row.index.name = self._data_backend.index.name
             yield (i, self.from_backend(row))
 
-    def itertuples(self: T) -> Generator[tuple]:
-        return self._data_backend.itertuples()
+    def itertuples(self: T, ignore_index: bool = False) -> Generator[tuple]:
+        return self._data_backend.itertuples(ignore_index=ignore_index)
 
     def _get_column(self: T, item: str) -> T:
         if item not in self._all_columns:
@@ -262,7 +266,7 @@ class DataStore:
                 f"The following columns do not exist in {self.__class__.__name__}: {unused_columns}"
             )
         return self._data_backend.getitems(columns)
-        
+
     def _get_mask(self: T, mask: list[bool]) -> T:
         return self._data_backend.getmask(mask)
 
@@ -294,9 +298,10 @@ class DataStore:
         return result
 
     def __getattr__(self: T, name: str) -> Any:
-        raise AttributeError(
-            f"Could not match '{name}' to {self.__class__.__name__} column"
-        )
+        if name[0] != "_":
+            raise AttributeError(
+                f"Could not match '{name}' to {self.__class__.__name__} column"
+            )
 
     def set_index(self: T, column: Union[str, Iterable]) -> T:
         return self.from_backend(self._data_backend.set_index(column))

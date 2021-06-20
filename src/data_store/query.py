@@ -43,8 +43,8 @@ class Query:
 
 @dataclass
 class EqualsQuery(Query):
-    a: Union[Any, ColumnAlias, Query]
-    b: Union[Any, ColumnAlias, Query]
+    a: Union[Any, Query]
+    b: Union[Any, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -54,8 +54,8 @@ class EqualsQuery(Query):
 
 @dataclass
 class NotEqualsQuery(Query):
-    a: Union[Any, ColumnAlias]
-    b: Union[Any, ColumnAlias]
+    a: Union[Any, Query]
+    b: Union[Any, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -65,8 +65,8 @@ class NotEqualsQuery(Query):
 
 @dataclass
 class GreaterThanQuery(Query):
-    a: Union[Any, ColumnAlias, Query]
-    b: Union[Any, ColumnAlias, Query]
+    a: Union[Any, Query]
+    b: Union[Any, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -76,8 +76,8 @@ class GreaterThanQuery(Query):
 
 @dataclass
 class GreaterEqualQuery(Query):
-    a: Union[Any, ColumnAlias, Query]
-    b: Union[Any, ColumnAlias, Query]
+    a: Union[Any, Query]
+    b: Union[Any, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -87,8 +87,8 @@ class GreaterEqualQuery(Query):
 
 @dataclass
 class LessThanQuery(Query):
-    a: Union[Any, ColumnAlias, Query]
-    b: Union[Any, ColumnAlias, Query]
+    a: Union[Any, Query]
+    b: Union[Any, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -98,8 +98,8 @@ class LessThanQuery(Query):
 
 @dataclass
 class LessEqualQuery(Query):
-    a: Union[Any, ColumnAlias, Query]
-    b: Union[Any, ColumnAlias, Query]
+    a: Union[Any, Query]
+    b: Union[Any, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -108,7 +108,7 @@ class LessEqualQuery(Query):
 
 @dataclass
 class RowCountQuery(Query):
-    a: Union[Iterable, ColumnAlias, Query]
+    a: Union[Iterable, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -116,7 +116,7 @@ class RowCountQuery(Query):
 
 @dataclass
 class SumQuery(Query):
-    a: Union[Iterable, ColumnAlias, Query]
+    a: Union[Iterable, Query]
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         a = query_compiler.compile(self.a)
@@ -145,5 +145,4 @@ class OrQuery(Query):
         return query_compiler.OR(OrQuery(a, b))
 
 
-from src.data_store.column_alias import ColumnAlias
 from src.database.adapter.query.query_compiler import QueryCompiler

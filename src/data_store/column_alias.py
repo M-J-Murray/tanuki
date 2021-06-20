@@ -1,34 +1,11 @@
 from __future__ import annotations
 
-import builtins
 from io import UnsupportedOperation
-from typing import Any, Iterable, Optional, Union
+from typing import Optional
 
 from src.data_store.data_type import DataType
-from src.data_store.query import Query
 
 from .column import Column
-
-old_len = builtins.len
-old_sum = builtins.sum
-
-
-def len(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:
-    if issubclass(type(a), Query) or type(a) is ColumnAlias:
-        return a.__len__()
-    else:
-        return old_len(a)
-
-
-def sum(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:
-    if issubclass(type(a), Query) or type(a) is ColumnAlias:
-        return a.__sum__()
-    else:
-        return old_sum(a)
-
-
-builtins.len = len
-builtins.sum = sum
 
 
 class ColumnAlias:
@@ -98,6 +75,9 @@ class ColumnAlias:
         return OrQuery(self, o)
 
 
+import builtins
+from typing import Any, Iterable, Union
+
 from .query import (
     AndQuery,
     EqualsQuery,
@@ -110,3 +90,26 @@ from .query import (
     RowCountQuery,
     SumQuery,
 )
+
+old_len = builtins.len
+old_sum = builtins.sum
+
+from src.data_store.query import Query
+
+
+def len(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:
+    if issubclass(type(a), Query) or type(a) is ColumnAlias:
+        return a.__len__()
+    else:
+        return old_len(a)
+
+
+def sum(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:
+    if issubclass(type(a), Query) or type(a) is ColumnAlias:
+        return a.__sum__()
+    else:
+        return old_sum(a)
+
+
+builtins.len = len
+builtins.sum = sum

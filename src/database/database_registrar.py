@@ -102,7 +102,7 @@ class DatabaseRegistrar:
         if self._is_table_protected(data_token):
             raise UnsupportedOperation("Cannot delete from protected data group")
         self._db_adapter.drop_group_table(data_token)
-        store_type, store_version = self._table_store_type_version(data_token)
+        _, store_type, store_version = self._table_store_type_version(data_token)
 
         store_type_version_count = sum(
             (TableReference.store_type == store_type)
@@ -259,7 +259,7 @@ class DatabaseRegistrar:
             table_rows = self._db_adapter.query(
                 TableReference.data_token,
                 (TableReference.table_name == data_token.table_name)
-                & (TableReference.table_name == data_token.table_name),
+                & (TableReference.data_group == data_token.data_group),
                 columns,
             )
             if len(table_rows) == 0:
@@ -286,7 +286,7 @@ class DatabaseRegistrar:
                 raise DatabaseCorruptionError(
                     f"Duplicate table references found for {data_token}"
                 )
-            return table_rows[0][0]
+            return table_rows[0][1]
 
     def _group_contains_protected_tables(self, data_group: str) -> bool:
         if not self.has_group(data_group):
@@ -296,7 +296,10 @@ class DatabaseRegistrar:
             table_rows = self._db_adapter.query(
                 TableReference.data_token, criteria, [str(TableReference.protected)]
             )
-            return any([item[0] for item in table_rows])
+            return any([
+                item[1] 
+                for item in table_rows
+            ])
 
     def _has_store_type(self, store_name: str, store_version: int):
         type_versions = self._store_references().store_versions()
@@ -344,7 +347,7 @@ class DatabaseRegistrar:
                     f"Cannot deserialise data store type for version {definition_version}"
                 )
             def_rows = self._db_adapter.query(reference_token)
-            return StoreDefinition.from_rows(def_rows)
+            return StoreDefinition.from_rows(def_rows)        
 
     def store_class(self, data_token: DataToken) -> Type[T]:
         store_type, store_version = self._table_store_type_version(data_token)

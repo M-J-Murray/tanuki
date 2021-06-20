@@ -187,6 +187,11 @@ class Column(Generic[T]):
     def __iter__(self: Column[T]) -> Iterator[T]:
         return self._data_backend.itertuples()
 
+    def item(self) -> Any:
+        if len(self) > 1:
+            raise RuntimeError("Cannot call `item` on list of column values")
+        return self.values[0]
+
     def __getitem__(self: Column[T], indexable: Indexible) -> Column[T]:
         return self.loc[indexable]
 

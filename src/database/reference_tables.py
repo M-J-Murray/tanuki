@@ -14,6 +14,7 @@ T = TypeVar("T", bound=DataStore)
 
 PROTECTED_GROUP = "tanuki_protected"
 
+
 class TableReference(DataStore, version=1):
     data_token = DataToken(f"table_reference", PROTECTED_GROUP)
 
@@ -24,7 +25,10 @@ class TableReference(DataStore, version=1):
     protected: Column[bool]
 
     def data_tokens(self: TableReference) -> list[DataToken]:
-        return [DataToken(row.table_name, row.data_group) for _, row in self.iterrows()]
+        return [
+            DataToken(row.table_name.item(), row.data_group.item())
+            for _, row in self.iterrows()
+        ]
 
     @staticmethod
     def create_row(
@@ -108,5 +112,8 @@ class StoreDefinition(DataStore, version=1):
             ns |= functions
 
         return new_class(
-            store_type, (DataStore,), {"version": store_version, "register": False}, add_columns
+            store_type,
+            (DataStore,),
+            {"version": store_version, "register": False},
+            add_columns,
         )

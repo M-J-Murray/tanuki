@@ -29,19 +29,19 @@ class TestPandasBackend:
             "b": [1, 2, 3],
             "c": [True, False, True],
         }
-        assert_that(self.test_frame.to_dict("list"), equal_to(frame_expected_dict))
-        series_expected_dict = {"a": "a", "b": 1, "c": True}
-        assert_that(self.test_series0.to_dict("list"), equal_to(series_expected_dict))
+        assert_that(self.test_frame.to_dict(), equal_to(frame_expected_dict))
+        series_expected_dict = {"a": ["a"], "b": [1], "c": [True]}
+        assert_that(self.test_series0.to_dict(), equal_to(series_expected_dict))
 
     def test_single_row(self) -> None:
-        assert_that(self.test_series0["a"], equal_to("a"))
-        assert_that(self.test_series0["b"], equal_to(1))
-        assert_that(self.test_series0["c"], equal_to(True))
+        assert_that(self.test_series0["a"].values[0], equal_to("a"))
+        assert_that(self.test_series0["b"].values[0], equal_to(1))
+        assert_that(self.test_series0["c"].values[0], equal_to(True))
 
         example_row = self.test_frame.iloc[0]
-        assert_that(example_row["a"], equal_to("a"))
-        assert_that(example_row["b"], equal_to(1))
-        assert_that(example_row["c"], equal_to(True))
+        assert_that(example_row["a"].values[0], equal_to("a"))
+        assert_that(example_row["b"].values[0], equal_to(1))
+        assert_that(example_row["c"].values[0], equal_to(True))
 
     def test_set_index(self) -> None:
         test_slice = self.test_frame.iloc[[0, 2]]
@@ -89,14 +89,14 @@ class TestPandasBackend:
     def test_itertuples(self) -> None:
         for i, a, b, c in self.test_frame.itertuples():
             iloc_row = self.test_frame.iloc[i]
-            assert_that(a, equal_to(iloc_row["a"]))
-            assert_that(b, equal_to(iloc_row["b"]))
-            assert_that(c, equal_to(iloc_row["c"]))
+            assert_that(a, equal_to(iloc_row["a"].values[0]))
+            assert_that(b, equal_to(iloc_row["b"].values[0]))
+            assert_that(c, equal_to(iloc_row["c"].values[0]))
 
     def test_str(self) -> None:
-        expected = "\n   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
+        expected = "   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
         assert_that(str(self.test_frame), equal_to(expected))
 
     def test_repr(self) -> None:
-        expected = "\n   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
+        expected = "   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
         assert_that(repr(self.test_frame), equal_to(expected))

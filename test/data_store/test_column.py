@@ -132,9 +132,9 @@ class TestColumn:
 
     def test_getitem(self) -> None:
         column1 = Column[int]("test", [1, 2, 3])
-        assert_that(column1[1].values[0], equal_to(2))
+        assert_that(column1[1].item(), equal_to(2))
         column2 = Column[int]("test", [1, 2, 3], index=[1, 2, 3])
-        assert_that(column2[1].values[0], equal_to(1))
+        assert_that(column2[1].item(), equal_to(1))
 
     def test_iter(self) -> None:
         column = Column[int]("test", [1, 2, 3])

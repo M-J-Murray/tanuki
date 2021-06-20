@@ -24,6 +24,10 @@ class Database:
         self._db_adapter = database_adapter
         self._registrar = DatabaseRegistrar(database_adapter)
 
+    def table_columns(self, data_token: DataToken) -> list[str]:
+        col_ids = self._registrar.store_class(data_token).columns
+        return [str(col_id) for col_id in col_ids]
+
     def has_table(self, data_token: DataToken) -> bool:
         return self._registrar.has_table(data_token)
 
@@ -52,7 +56,7 @@ class Database:
         table_data = self._db_adapter.query(data_token, query, columns)
         store_class: Type[T] = self._registrar.store_class(data_token)
         store = store_class.from_rows(table_data)
-        return cast(store_type, store.to_table())
+        return cast(store_type, store)
 
     def insert(
         self: Database, data_token: DataToken, data_store: T, ignore_index: bool = False

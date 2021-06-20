@@ -8,8 +8,6 @@ from pandas import Index
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
-from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
-
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
 
@@ -27,7 +25,8 @@ class PandasBackend(DataBackend):
             self._data = DataFrame(dtype="object")
             self._data.index.rename("index", inplace=True)
         elif type(data) is Series:
-            self._data = cast(Series, data).to_frame()
+            self._data = cast(Series, data).to_frame().transpose()
+            self._data.index.rename("index", inplace=True)
         elif type(data) is DataFrame:
             self._data = DataFrame(data)
         elif type(data) is dict:
@@ -74,8 +73,8 @@ class PandasBackend(DataBackend):
     def cast_columns(self, column_dtypes: dict[str, type]) -> PandasBackend:
         return PandasBackend(self._data.astype(column_dtypes))
 
-    def to_dict(self, orient) -> dict[str, any]:
-        return self._data.to_dict(orient)
+    def to_dict(self) -> dict[str, any]:
+        return self._data.to_dict("list")
 
     @property
     def index(self) -> Index:
@@ -139,8 +138,8 @@ class PandasBackend(DataBackend):
         for i, row in self._data.iterrows():
             yield (i, PandasBackend(row.to_frame().transpose()))
 
-    def itertuples(self):
-        for values in self._data.itertuples():
+    def itertuples(self, ignore_index: bool = False):
+        for values in self._data.itertuples(index=not ignore_index):
             yield values
 
     def __getitem__(self, item: str) -> Any:
@@ -153,6 +152,7 @@ class PandasBackend(DataBackend):
         return PandasBackend(self._data[mask])
 
     def query(self, query: "Query") -> PandasBackend:
+        from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
         query_compiler = PandasQueryCompiler(self._data)
         query = query_compiler.compile(query)
         return PandasBackend(self._data[query])

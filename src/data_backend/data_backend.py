@@ -102,7 +102,7 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def itertuples(self) -> Generator[tuple, None, None]:
+    def itertuples(self, ignore_index: bool = False) -> Generator[tuple, None, None]:
         raise NotImplementedError()
 
     @abstractmethod

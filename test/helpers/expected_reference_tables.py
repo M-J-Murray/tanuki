@@ -47,6 +47,7 @@ STORE_REFERENCE = StoreReference(
 
 TABLE_REFERENCE_STORE_DEFINITION = StoreDefinition(
     column_name=[
+        "index",
         "table_name",
         "data_group",
         "store_type",
@@ -54,6 +55,7 @@ TABLE_REFERENCE_STORE_DEFINITION = StoreDefinition(
         "protected",
     ],
     column_type=[
+        pickle.dumps(Int64),
         pickle.dumps(String),
         pickle.dumps(String),
         pickle.dumps(String),
@@ -64,12 +66,14 @@ TABLE_REFERENCE_STORE_DEFINITION = StoreDefinition(
 
 STORE_REFERENCE_STORE_DEFINITION = StoreDefinition(
     column_name=[
+        "index",
         "store_type",
         "store_version",
         "definition_reference",
         "definition_version",
     ],
     column_type=[
+        pickle.dumps(Int64),
         pickle.dumps(String),
         pickle.dumps(Int64),
         pickle.dumps(String),
@@ -78,6 +82,14 @@ STORE_REFERENCE_STORE_DEFINITION = StoreDefinition(
 )
 
 STORE_DEFINITION_STORE_DEFINITION = StoreDefinition(
-    column_name=["column_name", "column_type"],
-    column_type=[pickle.dumps(String), pickle.dumps(Bytes)],
+    column_name=[
+        "index",
+        "column_name",
+        "column_type",
+    ],
+    column_type=[
+        pickle.dumps(Int64),
+        pickle.dumps(String),
+        pickle.dumps(Bytes),
+    ],
 )

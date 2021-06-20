@@ -262,8 +262,9 @@ class TestDatabaseRegistrar:
             DataToken("ExampleStore_v1_definition", PROTECTED_GROUP), 1
         )
         expected = StoreDefinition(
-            column_name=["a", "b", "c"],
+            column_name=["index", "a", "b", "c"],
             column_type=[
+                pickle.dumps(Int64),
                 pickle.dumps(String),
                 pickle.dumps(Int64),
                 pickle.dumps(Boolean),

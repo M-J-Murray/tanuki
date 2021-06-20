@@ -10,7 +10,9 @@ from src.data_store.data_store import DataStore
 from src.data_store.column import Column
 
 from test.helpers.example_store import ExampleStore
-
+from pathlib import Path
+import tempfile
+import shutil
 
 
 class TestSqlite3Backend:
@@ -18,7 +20,11 @@ class TestSqlite3Backend:
 
     @classmethod
     def setup_class(cls) -> None:
-        cls.sql_db = Sqlite3Container()
+        tmp_db_dir = Path(tempfile.gettempdir()) / "tanuki_test"
+        if tmp_db_dir.exists():
+            shutil.rmtree(tmp_db_dir, ignore_errors=True)
+        tmp_db_dir.mkdir()
+        cls.sql_db = Sqlite3Container(tmp_db_dir)
 
     def teardown_method(self) -> None:
         self.sql_db.reset()
@@ -34,8 +40,7 @@ class TestSqlite3Backend:
         with Sqlite3Database(conn_config) as db:
             db_store = ExampleStore.link(db, data_token)
             db_store = db_store.append(test_store)
-        
+
         with Sqlite3Database(conn_config) as db:
             db_store = ExampleStore.link(db, data_token)
             assert_that(db_store.equals(test_store), is_(True))
-            

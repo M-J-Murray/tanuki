@@ -13,9 +13,11 @@ class Sqlite3Schema(DatabaseSchema):
         self._columns = []
         for col in store_type.columns:
             name = col.name
+            modifiers = ""
             if name == "index":
                 name = "idx"
-            self._columns.append(f"{name} {Sqlite3Type(col.dtype)}")
+                modifiers = " PRIMARY KEY AUTOINCREMENT"
+            self._columns.append(f"{name} {Sqlite3Type(col.dtype)}{modifiers}")
 
     def __str__(self) -> str:
         return ", ".join(self._columns)
