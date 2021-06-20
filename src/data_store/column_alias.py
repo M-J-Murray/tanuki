@@ -45,9 +45,9 @@ class ColumnAlias:
         self.name = name
 
     def __call__(
-        self, data: Optional[list] = None, index: Optional[list] = None
+        self, name: str, data: Optional[list] = None, index: Optional[list] = None
     ) -> Column:
-        return Column(data=data, dtype=self.dtype, index=index)
+        return Column(name=name, data=data, dtype=self.dtype, index=index)
 
     def __str__(self) -> str:
         if self.name is None:

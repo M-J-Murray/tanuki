@@ -14,7 +14,6 @@ from typing import (
     TypeVar,
     Union,
 )
-from hamcrest.core.assert_that import assert_that
 
 from pandas import DataFrame, Index, Series
 
@@ -40,7 +39,6 @@ class DataStore:
     _data_backend: B
     loc: DataStore._LocIndexer[T]
     iloc: DataStore._ILocIndexer[T]
-
     index: Column[int]
 
     def __init_subclass__(
@@ -60,7 +58,7 @@ class DataStore:
             DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
-        self: T, index: Optional[list] = None, **column_data: dict[str, list]
+        self: T, index: Optional[Iterable] = None, **column_data: dict[str, list]
     ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
@@ -114,19 +112,6 @@ class DataStore:
         instance._compile()
         return instance
 
-    @property
-    def index(self: T) -> Index:
-        return self._data_backend.index
-
-    def is_row(self: T) -> bool:
-        return self._data_backend.is_row()
-
-    def to_table(self: T) -> T:
-        return self.from_backend(self._data_backend.to_table())
-
-    def to_row(self: T) -> T:
-        return self.from_backend(self._data_backend.to_row())
-
     @classmethod
     def _parse_columns(cls) -> dict[str, ColumnAlias]:
         variables = get_type_hints(cls)
@@ -166,10 +151,12 @@ class DataStore:
 
         invalid_types = []
         for name, col in columns.items():
-            data = Column(self._data_backend[name])
-            if data.dtype != col.dtype:
+            col_data = self._data_backend[name]
+            data_dtype = Column.infer_dtype(name, col_data)
+            if data_dtype != col.dtype:
                 try:
-                    self._data_backend[name] = col(data)
+                    cast_column = col(name, col_data)
+                    self._data_backend[name] = cast_column._data_backend
                 except:
                     invalid_types.append(name)
 
@@ -179,11 +166,14 @@ class DataStore:
     def _attach_columns(self: T) -> None:
         columns = self._parse_columns()
         active_columns = self._parse_active_columns()
-        for col in columns:
-            if col in active_columns:
-                setattr(self, col, self._data_backend[col])
+        for name, col in columns.items():
+            if name == "index":
+                setattr(self, name, self._data_backend.index)
+            elif name in active_columns:
+                data = self._data_backend[name]
+                setattr(self, name, col(name, data))
             else:
-                setattr(self, col, None)
+                setattr(self, name, None)
 
     def __contains__(self: T, key):
         return str(key) in self._all_columns
@@ -192,7 +182,7 @@ class DataStore:
         if len(self._data_backend) == 0:
             return f"Empty {self.__class__.__name__}"
         else:
-            return f"{self.__class__.__name__}{self._data_backend}"
+            return f"{self.__class__.__name__}\n{self._data_backend}"
 
     def __repr__(self: T) -> str:
         return str(self)
@@ -263,7 +253,7 @@ class DataStore:
         elif item not in self._active_columns:
             return None
         else:
-            return self._all_columns[item](self._data_backend[item])
+            return self._all_columns[item](item, self._data_backend[item])
 
     def _get_columns(self: T, columns: list[str]) -> T:
         unused_columns = set(columns) - self._all_columns.keys()
@@ -272,18 +262,26 @@ class DataStore:
                 f"The following columns do not exist in {self.__class__.__name__}: {unused_columns}"
             )
         return self._data_backend.getitems(columns)
+        
+    def _get_mask(self: T, mask: list[bool]) -> T:
+        return self._data_backend.getmask(mask)
 
     def __getitem__(
         self: T, item: Union[ColumnAlias, list[ColumnAlias], list[bool], Query]
     ) -> Union[Column, T]:
-        if type(item) is str or type(item) is ColumnAlias:
+        if item == "index":
+            return self._data_backend.index
+        elif type(item) is str or type(item) is ColumnAlias:
             result = self._get_column(str(item))
         elif isinstance(item, Iterable):
-            value_type = DataType(type(next(iter(item))))
+            sample = item
+            while type(sample) is not str and isinstance(sample, Iterable):
+                sample = next(iter(sample))
+            value_type = DataType(type(sample))
             if value_type is String or value_type is ColumnAlias:
                 result = self._get_columns([str(value) for value in item])
             elif value_type is Boolean:
-                result = self.from_backend(self._data_backend[item])
+                result = self._get_mask(item)
             else:
                 result = self._data_backend[item]
         elif issubclass(type(item), Query):

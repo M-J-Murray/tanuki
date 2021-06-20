@@ -1,11 +1,10 @@
-from typing import Any, Union
+from typing import Any
 
 from pandas import DataFrame
 
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.query import (
     AndQuery,
-    RowCountQuery,
     EqualsQuery,
     GreaterEqualQuery,
     GreaterThanQuery,
@@ -13,6 +12,7 @@ from src.data_store.query import (
     LessThanQuery,
     NotEqualsQuery,
     OrQuery,
+    RowCountQuery,
 )
 from src.database.adapter.query.query_compiler import QueryCompiler
 
@@ -24,7 +24,7 @@ class PandasQueryCompiler(QueryCompiler[DataFrame]):
         self._data_frame = data_frame
 
     def _get_value(
-        self: "PandasQueryCompiler", parameter: Union[Any, ColumnAlias]
+        self: "PandasQueryCompiler", parameter: Any
     ) -> Any:
         if type(parameter) is ColumnAlias:
             return self._data_frame[parameter.name]

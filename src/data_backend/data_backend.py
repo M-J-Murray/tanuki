@@ -1,12 +1,10 @@
+from __future__ import annotations
 from abc import abstractclassmethod, abstractmethod, abstractproperty
 from typing import Any, Generator, Generic, Iterable, Type, TypeVar, Union
 
+import numpy as np
 from pandas import Index
 from pandas.core.frame import DataFrame
-from pandas.core.series import Series
-
-from src.data_store.column import Column
-from src.data_store.query import Query
 
 B = TypeVar("B", bound="DataBackend")
 
@@ -24,31 +22,35 @@ class ILocIndexer(Generic[B]):
 
 
 class DataBackend:
-    def to_pandas(self) -> Union[Series, DataFrame]:
+    def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
 
     @abstractproperty
     def columns(self) -> list[str]:
         raise NotImplementedError()
 
+    @abstractproperty
+    def values(self) -> np.ndarray:
+        raise NotImplementedError()
+
+    @abstractproperty
+    def dtypes(self) -> dict[str, type]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def cast_columns(self, column_dtypes: dict[str, type]) -> DataBackend:
+        raise NotImplementedError()
+
     @abstractmethod
     def to_dict(self, orient) -> dict[str, any]:
         raise NotImplementedError()
 
-    @abstractmethod
-    def is_row(self) -> bool:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def to_table(self) -> B:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def to_row(self) -> B:
+    @abstractproperty
+    def index(self) -> Index:
         raise NotImplementedError()
 
     @abstractproperty
-    def index(self) -> Index:
+    def index_name(self) -> Union[str, list[str]]:
         raise NotImplementedError()
 
     @abstractproperty
@@ -112,11 +114,15 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
+    def getmask(self, mask: list[bool]) -> B:
+        raise NotImplementedError()
+
+    @abstractmethod
     def query(self, query: Query) -> B:
         raise NotImplementedError()
 
     @abstractmethod
-    def __setitem__(self, item: str, value: Column) -> Column:
+    def __setitem__(self, item: str, value: Any) -> None:
         raise NotImplementedError()
 
     @abstractmethod
@@ -134,3 +140,5 @@ class DataBackend:
     @abstractclassmethod
     def concat(cls: Type[B], all_backends: list[B], ignore_index: bool = False) -> B:
         raise NotImplementedError()
+
+from src.data_store.query import Query

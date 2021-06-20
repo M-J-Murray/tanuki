@@ -33,10 +33,6 @@ class TestPandasBackend:
         series_expected_dict = {"a": "a", "b": 1, "c": True}
         assert_that(self.test_series0.to_dict("list"), equal_to(series_expected_dict))
 
-    def test_is_row(self) -> None:
-        assert_that(self.test_frame.is_row(), equal_to(False))
-        assert_that(self.test_series0.is_row(), equal_to(True))
-
     def test_single_row(self) -> None:
         assert_that(self.test_series0["a"], equal_to("a"))
         assert_that(self.test_series0["b"], equal_to(1))

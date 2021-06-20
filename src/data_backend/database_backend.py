@@ -4,7 +4,6 @@ from typing import Any, Iterable, Type, Union
 
 from pandas import Index
 from pandas.core.frame import DataFrame
-from pandas.core.series import Series
 
 from src.data_store.column import Column
 from src.data_store.query import Query
@@ -35,22 +34,13 @@ class DatabaseBackend(DataBackend):
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
-    def to_pandas(self) -> Union[Series, DataFrame]:
+    def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
 
     def columns(self) -> list[str]:
         raise NotImplementedError()
 
     def to_dict(self, orient) -> dict[str, any]:
-        raise NotImplementedError()
-
-    def is_row(self) -> bool:
-        raise NotImplementedError()
-
-    def to_table(self) -> DatabaseBackend:
-        raise NotImplementedError()
-
-    def to_row(self) -> DatabaseBackend:
         raise NotImplementedError()
 
     @property

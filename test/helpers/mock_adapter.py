@@ -55,8 +55,6 @@ class MockAdapter(DatabaseAdapter):
         ignore_index: bool = False,
     ) -> None:
         existing = self.group_tables[data_token.data_group][data_token.table_name]
-        if data_store.is_row():
-            data_store = data_store.to_table()
         combined = pd.concat(
             [existing, data_store.to_pandas()], ignore_index=ignore_index
         )

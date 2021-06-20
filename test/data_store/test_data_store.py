@@ -101,17 +101,17 @@ class TestDataStore:
 
     def test_single_row(self) -> None:
         example_row = ExampleStore(a=["a"], b=[1])
-        assert_that(example_row.a, equal_to(["a"]))
-        assert_that(example_row.b, equal_to([1]))
+        assert_that(example_row.a.values, equal_to(["a"]))
+        assert_that(example_row.b.values, equal_to([1]))
 
         example_row = ExampleStore(a="a", b=1)
-        assert_that(example_row.a, equal_to("a"))
-        assert_that(example_row.b, equal_to(1))
+        assert_that(example_row.a.values, equal_to(["a"]))
+        assert_that(example_row.b.values, equal_to([1]))
 
         test_slice = self.test_store.iloc[0]
-        assert_that(test_slice.a, equal_to("a"))
-        assert_that(test_slice.b, equal_to(1))
-        assert_that(test_slice.b, equal_to(True))
+        assert_that(test_slice.a.values, equal_to(["a"]))
+        assert_that(test_slice.b.values, equal_to([1]))
+        assert_that(test_slice.b.values, equal_to([True]))
 
     def test_empty_store(self) -> None:
         example_row = ExampleStore(a=[], b=[], c=[])
@@ -174,6 +174,7 @@ class TestDataStore:
         assert_that(self.test_store.index.tolist(), equal_to([0, 1, 2]))
         test_slice = self.test_store.iloc[[0, 2]]
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))
+        assert_that(test_slice["index"].tolist(), equal_to([0, 2]))
 
     def test_append(self) -> None:
         actual = self.test_store.append(
@@ -216,7 +217,7 @@ class TestDataStore:
 
     def test_eq(self) -> None:
         result = self.test_store == self.test_store
-        assert_that(result.all().all(), is_(True))
+        assert_that(result.values.all().all(), is_(True))
         result = self.test_store == "a"
         expected = DataFrame(
             {
@@ -229,7 +230,7 @@ class TestDataStore:
 
     def test_ne(self) -> None:
         result = self.test_store != self.test_store
-        assert_that(result.any().any(), is_(False))
+        assert_that(result.values.any().any(), is_(False))
         result = self.test_store != "a"
         expected = DataFrame(
             {
@@ -242,7 +243,7 @@ class TestDataStore:
 
     def test_gt(self) -> None:
         result = self.test_store > self.test_store
-        assert_that(result.any().any(), is_(False))
+        assert_that(result.values.any().any(), is_(False))
         try:
             self.test_store > 1
             fail("Expected exception")
@@ -253,7 +254,7 @@ class TestDataStore:
 
     def test_ge(self) -> None:
         result = self.test_store >= self.test_store
-        assert_that(result.all().all(), is_(True))
+        assert_that(result.values.all().all(), is_(True))
         try:
             self.test_store >= 1
             fail("Expected exception")
@@ -264,7 +265,7 @@ class TestDataStore:
 
     def test_lt(self) -> None:
         result = self.test_store < self.test_store
-        assert_that(result.any().any(), is_(False))
+        assert_that(result.values.any().any(), is_(False))
         try:
             self.test_store < 1
             fail("Expected exception")
@@ -275,7 +276,7 @@ class TestDataStore:
 
     def test_le(self) -> None:
         result = self.test_store <= self.test_store
-        assert_that(result.all().all(), is_(True))
+        assert_that(result.values.all().all(), is_(True))
         try:
             self.test_store <= 1
             fail("Expected exception")
@@ -337,14 +338,14 @@ class TestDataStore:
     def test_itertuples(self) -> None:
         for i, a, b, c in self.test_store.itertuples():
             iloc_row = self.test_store.iloc[i]
-            assert_that(a, equal_to(iloc_row.a))
-            assert_that(b, equal_to(iloc_row.b))
-            assert_that(c, equal_to(iloc_row.c))
+            assert_that(a, equal_to(iloc_row.a.values[0]))
+            assert_that(b, equal_to(iloc_row.b.values[0]))
+            assert_that(c, equal_to(iloc_row.c.values[0]))
 
     def test_str(self) -> None:
-        expected = "ExampleStore\n   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
+        expected = "ExampleStore\n       a  b      c\nindex             \n0      a  1   True\n1      b  2  False\n2      c  3   True"
         assert_that(str(self.test_store), equal_to(expected))
 
     def test_repr(self) -> None:
-        expected = "ExampleStore\n   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
+        expected = "ExampleStore\n       a  b      c\nindex             \n0      a  1   True\n1      b  2  False\n2      c  3   True"
         assert_that(repr(self.test_store), equal_to(expected))

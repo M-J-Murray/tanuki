@@ -14,7 +14,7 @@ from typing import (
 )
 
 import numpy as np
-from pandas import Index, Series
+from pandas import Index
 
 from src.data_store.data_type import Boolean, DataType, Object
 
@@ -23,9 +23,14 @@ NT = TypeVar("NT")
 Indexible = Union[Any, list, Index]
 
 
+B = TypeVar("B", bound="DataBackend")
+
+
 class Column(Generic[T]):
-    index: Index
-    series: Series
+    name: str
+    _data_backend: B
+    loc: Column._LocIndexer[T]
+    iloc: Column._ILocIndexer[T]
     dtype: DataType
 
     @classmethod
@@ -35,131 +40,186 @@ class Column(Generic[T]):
         return ColumnAlias(dtype)
 
     def __init__(
-        self: Column[T], data: Optional[list[T]] = None, index: Optional[list] = None, dtype: Optional[T] = None
+        self: Column[T],
+        name: str,
+        data: Optional[list[T]] = None,
+        index: Optional[list] = None,
+        dtype: Optional[T] = None,
     ) -> None:
+        self.name = name
         if data is not None:
-            self.series = Series(data, index=index)
+            if isinstance(data, PandasBackend):
+                self._data_backend = data
+            else:
+                self._data_backend = PandasBackend({name: data}, index=index)
+            self.dtype = self.infer_dtype(self.name, self._data_backend) if dtype is None else DataType(dtype)
         else:
-            self.series = Series(dtype="object", index=index)
-
-        self.dtype = self._series_dtype() if dtype is None else DataType(dtype)
+            self._data_backend = PandasBackend(index=index)
+            self.dtype = Object
 
         if data is not None:
             self._validate_column()
+            self.loc = Column._LocIndexer[T](self)
+            self.iloc = Column._ILocIndexer[T](self)
 
     @staticmethod
-    def _determine_nested_dtype(data: Iterable) -> DataType:
+    def determine_nested_dtype(data: Iterable) -> DataType:
         sample = next(iter(data))
         stype = type(sample)
         if sample == data:
             return type(data)
         elif stype is list or stype is set:
-            nested_type = Column._determine_nested_dtype(sample)
+            nested_type = Column.determine_nested_dtype(sample)
         else:
             nested_type = stype
         return GenericAlias(type(data), nested_type)
 
-    def _series_dtype(self: Column[T]) -> DataType:
-        dtype: type
-        if self.series.dtype == np.object:
-            if len(self.series) == 0:
+    @staticmethod
+    def infer_dtype(column_name: str, data_backend: PandasBackend) -> DataType:
+        dtype: type = data_backend.dtypes[column_name]
+        if dtype == np.object:
+            if len(data_backend) == 0:
                 dtype = Object
             else:
-                sample = self.series.iloc[0]
+                sample = data_backend.iloc[0].values[0]
                 stype = type(sample)
                 if stype is list or stype is set:
-                    dtype = self._determine_nested_dtype(sample)
+                    dtype = Column.determine_nested_dtype(sample)
                 else:
                     dtype = stype
-
-        else:
-            dtype = self.series.dtype
         return DataType(dtype)
 
     def _validate_column(self: Column[T]) -> None:
-        if self.dtype != self._series_dtype():
+        data_type = self.infer_dtype(self.name, self._data_backend)
+        if self.dtype != data_type:
             try:
-                self.series = self.series.astype(self.dtype.pdtype())
+                self._data_backend = self._data_backend.cast_columns(
+                    {self.name: self.dtype.pdtype()}
+                )
             except Exception as e:
                 raise TypeError(
-                    f"Failed to cast '{self._series_dtype().__name__}' to '{self.dtype.__name__}'",
+                    f"Failed to cast '{data_type.__name__}' to '{self.dtype.__name__}'",
                     e,
                 )
 
     @property
     def index(self: Column[T]) -> Index:
-        return self.series.index
+        return self._data_backend.index
 
     def tolist(self: Column[T]) -> list:
-        return self.series.values.tolist()
+        return self._data_backend.values.tolist()
 
     @property
     def values(self: Column[T]) -> np.ndarray:
-        return self.series.values
+        return self._data_backend.values
 
     @classmethod
     def _new_data_copy(
-        cls: type[Column], series: Series, dtype: type[NT]
+        cls: type[Column], name: str, data_backend: DataBackend, dtype: type[NT]
     ) -> "Column[NT]":
-        instance: Column[dtype] = cls[dtype]()
-        instance.series = series
+        instance: Column[dtype] = cls(name)
+        instance._data_backend = data_backend
+        instance.dtype = DataType(dtype)
         return instance
 
     def astype(self: Column[T], new_dtype: type[NT]) -> "Column[NT]":
-        return self._new_data_copy(self.series.astype(new_dtype), new_dtype)
+        return Column(
+            self.name,
+            self._data_backend.cast_columns({self.name: new_dtype}),
+            dtype=new_dtype,
+        )
 
     def reset_index(self: Column[T], drop: bool = False) -> Column[T]:
-        return self._new_data_copy(self.series.reset_index(drop=drop), self.dtype)
+        return Column(
+            self.name,
+            self._data_backend.reset_index(drop=drop),
+            dtype=self.dtype
+        )
 
-    def first(self: Column[T], n: Optional[int] = 1, offset: Optional[int] = 0) -> T:
-        return self._new_data_copy(
-            self.series[self.index[offset : offset + n]], self.dtype
+    def first(
+        self: Column[T], n: Optional[int] = 1, offset: Optional[int] = 0
+    ) -> Column[T]:
+        return Column(
+            self.name,
+            self._data_backend.iloc[self.index[offset : offset + n]],
+            dtype=self.dtype
         )
 
     def equals(self: Column[T], other: Any) -> bool:
         if type(other) is Column:
-            return self.series.equals(cast(Column, other).series)
+            return self._data_backend.equals(cast(Column, other)._data_backend)
         else:
-            return self.series.equals(other)
+            return self._data_backend.equals(other)
 
     def __eq__(self: Column[T], other: Any) -> Column[Boolean]:
-        return Column[Boolean](self.series == other)
+        if isinstance(other, Column):
+            other = other._data_backend
+        return self._data_backend == other
 
     def __ne__(self: Column[T], other: Any) -> bool:
-        return Column[Boolean](self.series != other)
+        if isinstance(other, Column):
+            other = other._data_backend
+        return self._data_backend != other
 
     def __gt__(self: Column[T], other: Any) -> bool:
-        return Column[Boolean](self.series > other)
+        if isinstance(other, Column):
+            other = other._data_backend
+        return self._data_backend > other
 
     def __ge__(self: Column[T], other: Any) -> bool:
-        return Column[Boolean](self.series >= other)
+        if isinstance(other, Column):
+            other = other._data_backend
+        return self._data_backend >= other
 
     def __lt__(self: Column[T], other: Any) -> bool:
-        return Column[Boolean](self.series < other)
+        if isinstance(other, Column):
+            other = other._data_backend
+        return self._data_backend < other
 
     def __le__(self: Column[T], other: Any) -> bool:
-        return Column[Boolean](self.series <= other)
+        if isinstance(other, Column):
+            other = other._data_backend
+        return self._data_backend <= other
 
     def __len__(self: Column[T]):
-        return len(self.series)
+        return len(self._data_backend)
 
     def __iter__(self: Column[T]) -> Iterator[T]:
-        return iter(self.series)
+        return self._data_backend.itertuples()
 
     def __getitem__(self: Column[T], indexable: Indexible) -> Column[T]:
-        result = self.series[indexable]
-        if type(result) is Series:
-            result = self._new_data_copy(result)
-        return result
+        return self.loc[indexable]
 
     def __str__(self: Column[T]) -> str:
-        if len(self.series) == 0:
-            return f"Column([], dtype: {self.dtype.__name__})"
+        result = f"Column {self.name}"
+        if len(self._data_backend) == 0:
+            return f"{result}([], dtype: {self.dtype.__name__})"
         else:
-            str_def = str(self.series)
-            dtype_ind = str_def.index("dtype:")
-            str_def = str_def[: dtype_ind + 7] + str(self.dtype.__name__)
-            return str_def
+            return str(self._data_backend)
 
     def __repr__(self: Column[T]) -> str:
         return str(self)
+
+    class _ILocIndexer(Generic[T]):
+        _column: Column[T]
+
+        def __init__(self, column: Column[T]) -> None:
+            self._column = column
+
+        def __getitem__(self, item: Union[int, list, slice]) -> Column[T]:
+            data = self._column._data_backend.iloc[item]
+            return Column._new_data_copy(self._column.name, data, self._column.dtype)
+
+    class _LocIndexer(Generic[T]):
+        _column: Column[T]
+
+        def __init__(self, column: Column[T]) -> None:
+            self._column = column
+
+        def __getitem__(self, item: Union[Any, list, slice]) -> Column[T]:
+            data = self._column._data_backend.loc[item]
+            return Column._new_data_copy(self._column.name, data, self._column.dtype)
+
+
+from src.data_backend.data_backend import DataBackend
+from src.data_backend.pandas_backend import PandasBackend

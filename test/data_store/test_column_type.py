@@ -59,7 +59,7 @@ test_data = [
 @pytest.mark.parametrize("data_type, data", test_data)
 def test_all_column_types(data_type: DataType, data: list) -> None:
     for equiv in data_type.equivalents():
-        test_col = Column[equiv](data)
+        test_col = Column[equiv]("test", data)
         assert_that(test_col.dtype, equal_to(data_type))
         assert_that(test_col.dtype.pdtype(), equal_to(data_type.pdtype()))
         col_data = test_col.tolist()
