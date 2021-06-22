@@ -97,7 +97,7 @@ class TestSqlite3Adapter:
         assert_that(self.db_adapter.has_group(token.data_group), equal_to(False))
         assert_that(self.db_adapter.has_group_table(token), equal_to(False))
 
-    def test_insert_query(self) -> None:
+    def test_insert_from_values(self) -> None:
         test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
         self.db_adapter.create_group(ExampleStore.data_token.data_group)
         self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
@@ -107,14 +107,64 @@ class TestSqlite3Adapter:
         queried1 = ExampleStore.from_rows(raw1)
         assert_that(queried1.equals(test1), is_(True))
 
-    def test_update(self) -> None:
+        test2 = ExampleStore(a=["d"], b=[4], c=[False])
+        self.db_adapter.insert(ExampleStore.data_token, test2, ignore_index=True)
+
+        test3 = ExampleStore.concat([test1, test2], ignore_index=True)
+        raw2 = self.db_adapter.query(ExampleStore.data_token)
+        queried2 = ExampleStore.from_rows(raw2)
+
+        assert_that(queried2.equals(test3), is_(True))
+
+    def test_insert_from_link(self) -> None:
         fail("Not Implemented")
 
-    def test_upsert(self) -> None:
+    def test_update_from_values(self) -> None:
+        test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        self.db_adapter.create_group(ExampleStore.data_token.data_group)
+        self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
+        self.db_adapter.insert(ExampleStore.data_token, test1)
+
+        raw1 = self.db_adapter.query(ExampleStore.data_token)
+        queried1 = ExampleStore.from_rows(raw1)
+        assert_that(queried1.equals(test1), is_(True))
+
+        test2 = ExampleStore(index=[1], a=["d"], b=[4], c=[True])
+        self.db_adapter.update(ExampleStore.data_token, test2, [ExampleStore.index])
+
+        raw1 = self.db_adapter.query(ExampleStore.data_token)
+        queried2 = ExampleStore.from_rows(raw1)
+        test2 = ExampleStore(a=["a", "d", "c"], b=[1, 4, 3], c=[True, True, True])
+        assert_that(queried2.equals(test2), is_(True))
+
+    def test_update_from_link(self) -> None:
         fail("Not Implemented")
 
-    def test_delete(self) -> None:
+    def test_upsert_from_values(self) -> None:
+        fail("Not Implemented")
+
+    def test_upsert_from_link(self) -> None:
+        fail("Not Implemented")
+
+    def test_delete_from_values(self) -> None:
+        fail("Not Implemented")
+
+    def test_delete_from_link(self) -> None:
         fail("Not Implemented")
 
     def test_drop_indices(self) -> None:
-        fail("Not Implemented")
+        test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        self.db_adapter.create_group(ExampleStore.data_token.data_group)
+        self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
+        self.db_adapter.insert(ExampleStore.data_token, test1)
+
+        raw1 = self.db_adapter.query(ExampleStore.data_token)
+        queried1 = ExampleStore.from_rows(raw1)
+        assert_that(queried1.equals(test1), is_(True))
+
+        self.db_adapter.drop_indices(ExampleStore.data_token, [1])
+
+        expected = test1.drop([1])
+        raw2 = self.db_adapter.query(ExampleStore.data_token)
+        queried2 = ExampleStore.from_rows(raw2)
+        assert_that(queried2.equals(expected), is_(True))

@@ -9,6 +9,7 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
+from src.database.data_token import DataToken
 
 
 class PandasBackend(DataBackend):
@@ -31,10 +32,7 @@ class PandasBackend(DataBackend):
             self._data = DataFrame(data)
         elif type(data) is dict:
             sample_value = next(iter(data.values()))
-            if (
-                not isinstance(sample_value, Iterable)
-                or isinstance(sample_value, str)
-            ):
+            if not isinstance(sample_value, Iterable) or isinstance(sample_value, str):
                 if index is None:
                     index = 0
                 data["index"] = index
@@ -48,6 +46,12 @@ class PandasBackend(DataBackend):
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
+    def is_link(self) -> bool:
+        return False
+
+    def link_token(self) -> Optional[DataToken]:
+        return None
+    
     def to_pandas(self) -> Union[Series, DataFrame]:
         return self._data
 
@@ -153,6 +157,7 @@ class PandasBackend(DataBackend):
 
     def query(self, query: "Query") -> PandasBackend:
         from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
+
         query_compiler = PandasQueryCompiler(self._data)
         query = query_compiler.compile(query)
         return PandasBackend(self._data[query])
@@ -174,6 +179,9 @@ class PandasBackend(DataBackend):
         return PandasBackend(
             self._data.append(new_backend._data, ignore_index=ignore_index)
         )
+
+    def drop_indices(self: PandasBackend, indices: list[int]) -> PandasBackend:
+        return PandasBackend(self._data.drop(indices))
 
     @classmethod
     def concat(
@@ -215,5 +223,6 @@ class _LocIndexer(LocIndexer[PandasBackend]):
             item = [item]
         result = self._data_backend._data.loc[item]
         return PandasBackend(result)
+
 
 from src.data_store.query import Query

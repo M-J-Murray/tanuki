@@ -106,6 +106,12 @@ class DataStore:
     def to_pandas(self: T) -> Union[Series, DataFrame]:
         return self._data_backend.to_pandas()
 
+    def is_link(self: T) -> bool:
+        return self._data_backend.is_link()
+
+    def link_token(self: T) -> Optional[DataToken]:
+        return self._data_backend.link_token()
+
     @classmethod
     def from_backend(cls: Type[T], data_backend: B, validate: bool = True) -> T:
         instance = cls()
@@ -314,6 +320,11 @@ class DataStore:
             self._data_backend.append(
                 new_store._data_backend, ignore_index=ignore_index
             )
+        )
+
+    def drop(self: T, indices: list[int]) -> T:
+        return self.from_backend(
+            self._data_backend.drop_indices(indices)
         )
 
     @classmethod

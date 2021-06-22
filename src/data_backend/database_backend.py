@@ -57,6 +57,12 @@ class DatabaseBackend(Generic[T], DataBackend):
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
+    def is_link(self) -> bool:
+        return True
+
+    def link_token(self) -> Optional[DataToken]:
+        return self._data_token
+
     def to_pandas(self) -> DataFrame:
         return self.query()
 

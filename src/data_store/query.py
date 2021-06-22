@@ -47,6 +47,24 @@ class Query:
         raise NotImplementedError()
 
 
+class MultiAndQuery(Query):
+    a: Query
+
+    def __init__(self, query_type: type[Query], a_items: list, b_items: list) -> None:
+        if len(a_items) != len(b_items):
+            raise RuntimeError("Cannot build multi query with items of different lengths")
+        query: Query = None
+        for a, b in zip(a_items, b_items):
+            new_query = query_type(a, b)
+            if query is None:
+                query = new_query
+            else:
+                query = query and new_query
+        self.a = query
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        return query_compiler.compile(self.a)
+
 @dataclass
 class EqualsQuery(Query):
     a: Union[Any, Query]

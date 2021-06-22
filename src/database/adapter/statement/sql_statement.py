@@ -56,14 +56,38 @@ class SqlStatement:
         self._commands.append(f"VALUES ({str_def})")
         return self
 
-    def UPDATE(
+    def IN(self: "SqlStatement", values: Tuple[Any, ...], quote: bool = True) -> "SqlStatement":
+        adapted_values = []
+        for val in values:
+            if val is None:
+                adapted_values.append("NULL")
+            elif quote:
+                adapted_values.append(f"'{val}'")
+            else:
+                adapted_values.append(str(val))
+        str_def = ", ".join(adapted_values)
+        self._commands.append(f"IN ({str_def})")
+        return self
+
+    def UPDATE_FROM_LINK(
         self: "SqlStatement",
         source_token: Union[str, DataToken],
         target_token: Union[str, DataToken],
-        *columns: str,
+        update_columns: list[str],
+    ) -> "SqlStatement":
+        update_col_names = [str(col) for col in update_columns]
+        col_str = ", ".join([f"{col}={source_token}.{col}" for col in update_col_names])
+        self._commands.append(f"UPDATE {target_token} SET {col_str}")
+        return self
+
+    def UPDATE_FROM_VALUES(
+        self: "SqlStatement",
+        target_token: Union[str, DataToken],
+        columns: list[str],
+        values: list[str],
     ) -> "SqlStatement":
         col_names = [str(col) for col in columns]
-        col_str = ", ".join([f"{col}={source_token}.{col}" for col in col_names])
+        col_str = ", ".join([f"{col}={value}" for col, value in zip(col_names, values)])
         self._commands.append(f"UPDATE {target_token} SET {col_str}")
         return self
 

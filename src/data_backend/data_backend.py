@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from abc import abstractclassmethod, abstractmethod, abstractproperty
-from typing import Any, Generator, Generic, Iterable, Type, TypeVar, Union
+from typing import Any, Generator, Generic, Iterable, Optional, Type, TypeVar, Union
+from src.database.data_token import DataToken
 
 import numpy as np
 from pandas import Index
@@ -22,6 +24,16 @@ class ILocIndexer(Generic[B]):
 
 
 class DataBackend:
+    
+    @abstractmethod
+    def is_link(self: B) -> bool:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def link_token(self: B) -> Optional[DataToken]:
+        raise NotImplementedError()
+    
+    @abstractmethod
     def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
 
@@ -136,6 +148,10 @@ class DataBackend:
     @abstractmethod
     def append(self: B, new_backend: B, ignore_index: bool = False) -> B:
         raise NotImplementedError()
+
+    @abstractmethod
+    def drop_indices(self: B, indices: list[int]) -> B:
+        raise NotImplementedError()  
 
     @abstractclassmethod
     def concat(cls: Type[B], all_backends: list[B], ignore_index: bool = False) -> B:
