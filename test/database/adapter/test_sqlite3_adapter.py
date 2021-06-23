@@ -141,16 +141,43 @@ class TestSqlite3Adapter:
         fail("Not Implemented")
 
     def test_upsert_from_values(self) -> None:
-        fail("Not Implemented")
+        test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        self.db_adapter.create_group(ExampleStore.data_token.data_group)
+        self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
+        self.db_adapter.insert(ExampleStore.data_token, test1)
+
+        raw1 = self.db_adapter.query(ExampleStore.data_token)
+        queried1 = ExampleStore.from_rows(raw1)
+        assert_that(queried1.equals(test1), is_(True))
+
+        test2 = ExampleStore(index=[1, 3], a=["d", "e"], b=[4, 5], c=[True, False])
+        self.db_adapter.upsert(ExampleStore.data_token, test2, [ExampleStore.index])
+
+        raw1 = self.db_adapter.query(ExampleStore.data_token)
+        queried2 = ExampleStore.from_rows(raw1)
+        test2 = ExampleStore(
+            a=["a", "d", "c", "e"], b=[1, 4, 3, 5], c=[True, True, True, False]
+        )
+        assert_that(queried2.equals(test2), is_(True))
 
     def test_upsert_from_link(self) -> None:
         fail("Not Implemented")
 
-    def test_delete_from_values(self) -> None:
-        fail("Not Implemented")
+    def test_delete(self) -> None:
+        test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        self.db_adapter.create_group(ExampleStore.data_token.data_group)
+        self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
+        self.db_adapter.insert(ExampleStore.data_token, test1)
 
-    def test_delete_from_link(self) -> None:
-        fail("Not Implemented")
+        raw1 = self.db_adapter.query(ExampleStore.data_token)
+        queried1 = ExampleStore.from_rows(raw1)
+        assert_that(queried1.equals(test1), is_(True))
+
+        self.db_adapter.delete(ExampleStore.data_token, ExampleStore.b == 2)
+        raw2 = self.db_adapter.query(ExampleStore.data_token)
+        queried2 = ExampleStore.from_rows(raw2)
+        test2 = ExampleStore(a=["a", "c"], b=[1, 3], c=[True, True])
+        assert_that(queried2.equals(test2), is_(True))
 
     def test_drop_indices(self) -> None:
         test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
@@ -164,7 +191,7 @@ class TestSqlite3Adapter:
 
         self.db_adapter.drop_indices(ExampleStore.data_token, [1])
 
-        expected = test1.drop([1])
+        test2 = ExampleStore(a=["a", "c"], b=[1, 3], c=[True, True])
         raw2 = self.db_adapter.query(ExampleStore.data_token)
         queried2 = ExampleStore.from_rows(raw2)
-        assert_that(queried2.equals(expected), is_(True))
+        assert_that(queried2.equals(test2), is_(True))

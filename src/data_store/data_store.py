@@ -112,6 +112,9 @@ class DataStore:
     def link_token(self: T) -> Optional[DataToken]:
         return self._data_backend.link_token()
 
+    def load(self: T) -> T:
+        return self.from_backend(self._data_backend.load())
+
     @classmethod
     def from_backend(cls: Type[T], data_backend: B, validate: bool = True) -> T:
         instance = cls()
@@ -143,7 +146,7 @@ class DataStore:
 
     def _parse_active_columns(self: T) -> dict[str, ColumnAlias]:
         columns = self._parse_columns()
-        backend_columns = self._data_backend.columns
+        backend_columns = [str(col) for col in self._data_backend.columns]
         unmatched_columns = set(backend_columns) - columns.keys()
         if len(unmatched_columns) > 0:
             raise KeyError(
@@ -276,10 +279,15 @@ class DataStore:
     def _get_mask(self: T, mask: list[bool]) -> T:
         return self._data_backend.getmask(mask)
 
+    def query(self: T, query: Optional[Query] = None) -> T:
+        return self.from_backend(self._data_backend.query(query))
+
     def __getitem__(
         self: T, item: Union[ColumnAlias, list[ColumnAlias], list[bool], Query]
     ) -> Union[Column, T]:
-        if item == "index":
+        if issubclass(type(item), Query):
+            result = self._data_backend.query(item)
+        elif item == "index":
             return self._data_backend.index
         elif type(item) is str or type(item) is ColumnAlias:
             result = self._get_column(str(item))
@@ -294,8 +302,6 @@ class DataStore:
                 result = self._get_mask(item)
             else:
                 raise RuntimeError(f"Unknown get item request: {item}")
-        elif issubclass(type(item), Query):
-            result = self._data_backend.query(item)
         else:
             raise RuntimeError(f"Unknown get item request: {item}")
 

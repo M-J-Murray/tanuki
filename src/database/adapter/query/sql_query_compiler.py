@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from src.data_store.query import (
     AndQuery,
     EqualsQuery,
@@ -13,29 +14,38 @@ from src.data_store.query import (
 from src.database.adapter.query.query_compiler import QueryCompiler
 
 
+@dataclass
 class SqlQueryCompiler(QueryCompiler[str]):
-    def EQUALS(self: "SqlQueryCompiler", equals_type: EqualsQuery) -> str:
-        return f"{equals_type.a}='{equals_type.b}'"
+    quote: bool = False
 
-    def NOT_EQUALS(self: "SqlQueryCompiler", not_equals_type: NotEqualsQuery) -> str:
-        return f"{not_equals_type.a}!='{not_equals_type.b}'"
+    def try_quote(self, value: str) -> str:
+        if self.quote:
+            return f"'{value}'"
+        else:
+            return value
 
-    def GREATER_THAN(self: "QueryCompiler", gt_query: GreaterThanQuery) -> str:
-        return f"{gt_query.a}>'{gt_query.b}'"
+    def EQUALS(self: "SqlQueryCompiler", query: EqualsQuery) -> str:
+        return f"{query.a}={self.try_quote(query.b)}"
 
-    def GREATER_EQUAL(self: "QueryCompiler", ge_query: GreaterEqualQuery) -> str:
-        return f"{ge_query.a}>='{ge_query.b}'"
+    def NOT_EQUALS(self: "SqlQueryCompiler", query: NotEqualsQuery) -> str:
+        return f"{query.a}!={self.try_quote(query.b)}"
 
-    def LESS_THAN(self: "QueryCompiler", lt_query: LessThanQuery) -> str:
-        return f"{lt_query.a}<'{lt_query.b}'"
+    def GREATER_THAN(self: "SqlQueryCompiler", query: GreaterThanQuery) -> str:
+        return f"{query.a}>{self.try_quote(query.b)}"
 
-    def LESS_EQUAL(self: "QueryCompiler", le_query: LessEqualQuery) -> str:
-        return f"{le_query.a}<='{le_query.b}'"
+    def GREATER_EQUAL(self: "SqlQueryCompiler", query: GreaterEqualQuery) -> str:
+        return f"{query.a}>={self.try_quote(query.b)}"
 
-    def ROW_COUNT(self: "QueryCompiler", row_count_query: RowCountQuery) -> str:
+    def LESS_THAN(self: "SqlQueryCompiler", query: LessThanQuery) -> str:
+        return f"{query.a}<{self.try_quote(query.b)}"
+
+    def LESS_EQUAL(self: "SqlQueryCompiler", query: LessEqualQuery) -> str:
+        return f"{query.a}<={self.try_quote(query.b)}"
+
+    def ROW_COUNT(self: "SqlQueryCompiler", row_count_query: RowCountQuery) -> str:
         return f"COUNT({row_count_query.a})"
 
-    def SUM(self: "QueryCompiler", sum_query: SumQuery) -> str:
+    def SUM(self: "SqlQueryCompiler", sum_query: SumQuery) -> str:
         return f"SUM({sum_query.a})"
 
     def AND(self: "SqlQueryCompiler", and_type: AndQuery) -> str:

@@ -14,6 +14,7 @@ from src.data_store.query import (
     GreaterThanQuery,
     LessEqualQuery,
     LessThanQuery,
+    MultiAndQuery,
     NotEqualsQuery,
     Query,
 )
@@ -64,7 +65,7 @@ class DatabaseBackend(Generic[T], DataBackend):
         return self._data_token
 
     def to_pandas(self) -> DataFrame:
-        return self.query()
+        return self.load().to_pandas()
 
     @property
     def columns(self) -> list[str]:
@@ -79,7 +80,13 @@ class DatabaseBackend(Generic[T], DataBackend):
 
     @property
     def index(self) -> Index:
-        return self["index"]
+        return DatabaseBackend(
+            self._store_class,
+            self._database,
+            self._data_token,
+            ["index"],
+            self._read_only,
+        )
 
     @property
     def loc(self: DatabaseBackend) -> LocIndexer[DatabaseBackend]:
@@ -92,33 +99,23 @@ class DatabaseBackend(Generic[T], DataBackend):
     def equals(self, other):
         raise NotImplementedError()
 
-    def _build_query(self, other: Any, query_class: Type[Query]) -> Query:
-        query: Query = None
-        for column in self._selected_columns:
-            new_query = query_class(column, other)
-            if query is None:
-                query = new_query
-            else:
-                query = query and new_query
-        return query
-
     def __eq__(self, other: Any) -> Query:
-        return self._build_query(other, EqualsQuery)
+        return MultiAndQuery(EqualsQuery, self._selected_columns, [other for _ in self._selected_columns])
 
     def __ne__(self, other: Any) -> Query:
-        return self._build_query(other, NotEqualsQuery)
+        return MultiAndQuery(NotEqualsQuery, self._selected_columns, [other for _ in self._selected_columns])
 
     def __gt__(self, other: Any) -> Query:
-        return self._build_query(other, GreaterThanQuery)
+        return MultiAndQuery(GreaterThanQuery, self._selected_columns, [other for _ in self._selected_columns])
 
     def __ge__(self, other: Any) -> Query:
-        return self._build_query(other, GreaterEqualQuery)
+        return MultiAndQuery(GreaterEqualQuery, self._selected_columns, [other for _ in self._selected_columns])
 
     def __lt__(self, other: Any) -> Query:
-        return self._build_query(other, LessThanQuery)
+        return MultiAndQuery(LessThanQuery, self._selected_columns, [other for _ in self._selected_columns])
 
     def __le__(self, other: Any) -> Query:
-        return self._build_query(other, LessEqualQuery)
+        return MultiAndQuery(LessEqualQuery, self._selected_columns, [other for _ in self._selected_columns])
 
     def __len__(self):
         return self._database.row_count(self._data_token)
@@ -157,7 +154,7 @@ class DatabaseBackend(Generic[T], DataBackend):
     def query(self, query: Optional[Query] = None) -> PandasBackend:
         return self._database.query(
             self._store_class, self._data_token, query, self._selected_columns
-        )
+        )._data_backend
 
     def __setitem__(self, item: str, value: Any) -> None:
         raise NotImplementedError()

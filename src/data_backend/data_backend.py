@@ -34,6 +34,10 @@ class DataBackend:
         raise NotImplementedError()
     
     @abstractmethod
+    def load(self: B) -> B:
+        raise NotImplementedError()
+
+    @abstractmethod
     def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
 

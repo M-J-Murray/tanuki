@@ -34,13 +34,15 @@ class TestSqlite3Backend:
         cls.sql_db.stop()
 
     def test_insert(self) -> None:
-        data_token = DataToken("test_table", "raw")
         test_store = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
         conn_config = self.sql_db.connection_config()
         with Sqlite3Database(conn_config) as db:
-            db_store = ExampleStore.link(db, data_token)
-            db_store = db_store.append(test_store)
+            db.insert(ExampleStore.data_token, test_store)
 
-        with Sqlite3Database(conn_config) as db:
-            db_store = ExampleStore.link(db, data_token)
-            assert_that(db_store.equals(test_store), is_(True))
+            db_store = ExampleStore.link(db, ExampleStore.data_token)
+            queried = db_store.query()
+            assert_that(queried.equals(test_store), is_(True))
+
+        # with Sqlite3Database(conn_config) as db:
+        #     db_store = ExampleStore.link(db, data_token)
+        #     assert_that(db_store.equals(test_store), is_(True))

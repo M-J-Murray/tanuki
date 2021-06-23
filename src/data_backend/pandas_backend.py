@@ -51,8 +51,11 @@ class PandasBackend(DataBackend):
 
     def link_token(self) -> Optional[DataToken]:
         return None
+
+    def load(self) -> PandasBackend:
+        return self
     
-    def to_pandas(self) -> Union[Series, DataFrame]:
+    def to_pandas(self) -> DataFrame:
         return self._data
 
     @property

@@ -65,6 +65,12 @@ class MultiAndQuery(Query):
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         return query_compiler.compile(self.a)
 
+    def __str__(self) -> str:
+        return str(self.a)
+
+    def __repr__(self) -> str:
+        return str(self)
+
 @dataclass
 class EqualsQuery(Query):
     a: Union[Any, Query]
