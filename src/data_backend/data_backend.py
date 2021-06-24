@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from abc import abstractclassmethod, abstractmethod, abstractproperty
 from typing import Any, Generator, Generic, Iterable, Optional, Type, TypeVar, Union
-from src.database.data_token import DataToken
 
 import numpy as np
 from pandas import Index
 from pandas.core.frame import DataFrame
+
+from src.data_store.data_type import DataType
+from src.database.data_token import DataToken
 
 B = TypeVar("B", bound="DataBackend")
 
@@ -34,10 +36,6 @@ class DataBackend:
         raise NotImplementedError()
     
     @abstractmethod
-    def load(self: B) -> B:
-        raise NotImplementedError()
-
-    @abstractmethod
     def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
 
@@ -50,7 +48,7 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractproperty
-    def dtypes(self) -> dict[str, type]:
+    def dtypes(self) -> dict[str, DataType]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -159,6 +157,14 @@ class DataBackend:
 
     @abstractclassmethod
     def concat(cls: Type[B], all_backends: list[B], ignore_index: bool = False) -> B:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __str__(self: B) -> str:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __repr__(self: B) -> str:
         raise NotImplementedError()
 
 from src.data_store.query import Query

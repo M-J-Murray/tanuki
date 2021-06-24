@@ -65,7 +65,11 @@ class DatabaseBackend(Generic[T], DataBackend):
         return self._data_token
 
     def to_pandas(self) -> DataFrame:
-        return self.load().to_pandas()
+        return self.query().to_pandas()
+
+    @property
+    def values(self) -> DataFrame:
+        return self.to_pandas().values
 
     @property
     def columns(self) -> list[str]:
@@ -76,7 +80,7 @@ class DatabaseBackend(Generic[T], DataBackend):
         return self._database.table_dtypes(self._data_token)
 
     def to_dict(self) -> dict[str, any]:
-        raise NotImplementedError()
+        return self.query().to_dict()
 
     @property
     def index(self) -> Index:

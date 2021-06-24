@@ -100,3 +100,69 @@ class TestPandasBackend:
     def test_repr(self) -> None:
         expected = "   a  b      c\n0  a  1   True\n1  b  2  False\n2  c  3   True"
         assert_that(repr(self.test_frame), equal_to(expected))
+
+    def test_is_link(self) -> None:
+        raise NotImplementedError()
+
+    def test_link_token(self) -> None:
+        raise NotImplementedError()
+
+    def test_to_pandas(self) -> None:
+        raise NotImplementedError()
+
+    def test_values(self) -> None:
+        raise NotImplementedError()
+
+    def test_dtypes(self) -> None:
+        raise NotImplementedError()
+
+    def test_cast_columns(self) -> None:
+        raise NotImplementedError()
+
+    def test_index(self) -> None:
+        raise NotImplementedError()
+
+    def test_index_name(self) -> None:
+        raise NotImplementedError()
+
+    def test_equals(self) -> None:
+        raise NotImplementedError()
+
+    def test_ne(self) -> None:
+        raise NotImplementedError()
+
+    def test_gt(self) -> None:
+        raise NotImplementedError()
+
+    def test_ge(self) -> None:
+        raise NotImplementedError()
+
+    def test_lt(self) -> None:
+        raise NotImplementedError()
+
+    def test_le(self) -> None:
+        raise NotImplementedError()
+
+    def test_getitem(self) -> None:
+        raise NotImplementedError()
+
+    def test_getitems(self) -> None:
+        raise NotImplementedError()
+
+    def test_getmask(self) -> None:
+        raise NotImplementedError()
+
+    def test_query(self) -> None:
+        raise NotImplementedError()
+
+    def test_setitem(self) -> None:
+        raise NotImplementedError()
+
+    def test_append(self) -> None:
+        raise NotImplementedError()
+
+    def test_drop_indices(self) -> None:
+        raise NotImplementedError()
+
+    def test_concat(self) -> None:
+        raise NotImplementedError()

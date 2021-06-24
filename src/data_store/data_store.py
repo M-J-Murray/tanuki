@@ -15,6 +15,7 @@ from typing import (
     Union,
 )
 
+import numpy as np
 from pandas import DataFrame, Series
 
 from src.data_backend.data_backend import DataBackend
@@ -103,8 +104,19 @@ class DataStore:
     def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:
         return cls.from_backend(PandasBackend(data))
 
-    def to_pandas(self: T) -> Union[Series, DataFrame]:
+    def to_pandas(self: T) -> DataFrame:
         return self._data_backend.to_pandas()
+
+    def to_dict(self: T) -> DataFrame:
+        return self._data_backend.to_dict()
+
+    @property
+    def values(self: T) -> np.array:
+        return self._data_backend.values
+
+    @property
+    def dtypes(self: T) -> dict[str, DataType]:
+        return self._data_backend.dtypes
 
     def is_link(self: T) -> bool:
         return self._data_backend.is_link()
@@ -165,6 +177,7 @@ class DataStore:
         for name, col in columns.items():
             col_data = self._data_backend[name]
             data_dtype = Column.infer_dtype(name, col_data)
+            # TODO: Run in batch
             if data_dtype != col.dtype:
                 try:
                     cast_column = col(name, col_data)
@@ -180,7 +193,7 @@ class DataStore:
         active_columns = self._parse_active_columns()
         for name, col in columns.items():
             if name == "index":
-                setattr(self, name, self._data_backend.index)
+                setattr(self, name, col(self._data_backend.index))
             elif name in active_columns:
                 data = self._data_backend[name]
                 setattr(self, name, col(name, data))

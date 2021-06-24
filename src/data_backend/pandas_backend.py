@@ -8,8 +8,10 @@ from pandas import Index
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
-from .data_backend import DataBackend, ILocIndexer, LocIndexer
+from src.data_store.data_type import DataType
 from src.database.data_token import DataToken
+
+from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
 
 class PandasBackend(DataBackend):
@@ -52,9 +54,6 @@ class PandasBackend(DataBackend):
     def link_token(self) -> Optional[DataToken]:
         return None
 
-    def load(self) -> PandasBackend:
-        return self
-    
     def to_pandas(self) -> DataFrame:
         return self._data
 
@@ -74,8 +73,8 @@ class PandasBackend(DataBackend):
             return data_values
 
     @property
-    def dtypes(self) -> dict[str, type]:
-        return self._data.dtypes
+    def dtypes(self) -> dict[str, DataType]:
+        return {col: DataType(dtype) for col, dtype in self._data.dtypes.items()}
 
     def cast_columns(self, column_dtypes: dict[str, type]) -> PandasBackend:
         return PandasBackend(self._data.astype(column_dtypes))
