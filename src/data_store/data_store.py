@@ -7,16 +7,16 @@ from typing import (
     ClassVar,
     Generator,
     Generic,
-    get_type_hints,
     Iterable,
     Optional,
     Type,
     TypeVar,
     Union,
+    get_type_hints,
 )
 
 import numpy as np
-from pandas import DataFrame, Series
+from pandas import DataFrame, Index, Series
 
 from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
@@ -26,21 +26,27 @@ from src.data_store.data_type import Boolean, DataType, String
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
+from .index_alias import IndexAlias
+from .storable_type_factory import StorableTypeFactory
+
 B = TypeVar("B", bound=DataBackend)
 T = TypeVar("T", bound="DataStore")
 
-
 class DataStore:
+    # Class vars
     registered_stores: ClassVar[dict[str, Type[T]]] = {}
 
+    type_factory: ClassVar[StorableTypeFactory]
     version: ClassVar[int]
     columns: ClassVar[list[ColumnAlias]]
+    indices: ClassVar[list[IndexAlias]]
 
+    # Instance vars
     columns: list[ColumnAlias]
     _data_backend: B
     loc: DataStore._LocIndexer[T]
     iloc: DataStore._ILocIndexer[T]
-    index: Column[int]
+    index: Index
 
     def __init_subclass__(
         cls: Type[T], version: int = 1, register: bool = True
@@ -50,23 +56,28 @@ class DataStore:
             raise TypeError(
                 f"Duplicate DataStores found {cls} vs {DataStore.registered_stores[cls.__name__]}"
             )
+        cls.type_factory = StorableTypeFactory(list(cls.__mro__), cls.__annotations__)
         cls.version = version
         cls.columns = []
+        cls.indices = []
         for name, col in cls._parse_columns().items():
             cls.columns.append(col)
             setattr(cls, name, col)
+        for name, index in cls._parse_indices().items():
+            cls.indices.append(index)
+            setattr(cls, name, index)
         if register:
             DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
-        self: T, index: Optional[Iterable] = None, **column_data: dict[str, list]
+        self: T, **column_data: dict[str, list]
     ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self._data_backend = PandasBackend(column_data, index=index)
+            self._data_backend = PandasBackend(column_data)
             self._validate_data_frame()
         else:
-            self._data_backend = PandasBackend(index=index)
+            self._data_backend = PandasBackend()
         self._compile()
 
     def _compile(self: T) -> None:
@@ -96,8 +107,6 @@ class DataStore:
         else:
             columns = [str(col) for col in columns]
         data = DataFrame.from_records(data_rows, columns=columns)
-        if "index" in data:
-            data = data.set_index("index")
         return cls.from_backend(PandasBackend(data))
 
     @classmethod
@@ -138,23 +147,11 @@ class DataStore:
 
     @classmethod
     def _parse_columns(cls) -> dict[str, ColumnAlias]:
-        variables = get_type_hints(cls)
-        columns: dict[str, Column] = {}
-        missing_types = []
-        for name, col in variables.items():
-            if col is Column or type(col) is Column:
-                missing_types.append(name)
-            elif col is ColumnAlias:
-                columns[name] = col
-            elif type(col) is ColumnAlias:
-                col: ColumnAlias
-                col.name = name
-                columns[name] = col
-        if len(missing_types) > 0:
-            raise TypeError(
-                f"Failed to find column types for the following columns: {missing_types}"
-            )
-        return columns
+        return cls.type_factory.columns
+
+    @classmethod
+    def _parse_indices(cls) -> dict[str, IndexAlias]:
+        return cls.type_factory.indices
 
     def _parse_active_columns(self: T) -> dict[str, ColumnAlias]:
         columns = self._parse_columns()
@@ -192,9 +189,7 @@ class DataStore:
         columns = self._parse_columns()
         active_columns = self._parse_active_columns()
         for name, col in columns.items():
-            if name == "index":
-                setattr(self, name, col(self._data_backend.index))
-            elif name in active_columns:
+            if name in active_columns:
                 data = self._data_backend[name]
                 setattr(self, name, col(name, data))
             else:
@@ -327,12 +322,6 @@ class DataStore:
             raise AttributeError(
                 f"Could not match '{name}' to {self.__class__.__name__} column"
             )
-
-    def set_index(self: T, column: Union[str, Iterable]) -> T:
-        return self.from_backend(self._data_backend.set_index(column))
-
-    def reset_index(self: T, drop: bool = False) -> T:
-        return self.from_backend(self._data_backend.reset_index(drop=drop))
 
     def append(self: T, new_store: T, ignore_index: bool = False) -> T:
         return self.from_backend(

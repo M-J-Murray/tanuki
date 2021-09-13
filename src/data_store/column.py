@@ -81,7 +81,7 @@ class Column(Generic[T]):
     @staticmethod
     def infer_dtype(column_name: str, data_backend: PandasBackend) -> DataType:
         dtype: type = data_backend.dtypes[column_name]
-        if dtype == np.object:
+        if dtype == Object:
             if len(data_backend) == 0:
                 dtype = Object
             else:
@@ -131,11 +131,6 @@ class Column(Generic[T]):
             self.name,
             self._data_backend.cast_columns({self.name: new_dtype}),
             dtype=new_dtype,
-        )
-
-    def reset_index(self: Column[T], drop: bool = False) -> Column[T]:
-        return Column(
-            self.name, self._data_backend.reset_index(drop=drop), dtype=self.dtype
         )
 
     def first(

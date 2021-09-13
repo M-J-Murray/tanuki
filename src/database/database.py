@@ -60,7 +60,7 @@ class Database:
         columns = [str(col) for col in columns] if columns is not None else None
         table_data = self._db_adapter.query(data_token, query, columns)
         store_class: Type[T] = self._registrar.store_class(data_token)
-        store = store_class.from_rows(table_data)
+        store = store_class.from_rows(table_data, columns=columns)
         return cast(store_type, store)
 
     def insert(

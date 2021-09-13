@@ -4,6 +4,8 @@ import pickle
 from types import new_class
 from typing import Any, Type, TypeVar
 
+from pandas.core.indexes.base import Index
+
 from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Bytes

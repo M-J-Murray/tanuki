@@ -31,7 +31,9 @@ class TestAcceptance:
 
     def test_create_insert_query_data(self) -> None:
         insert_store = ExampleStore(
-            a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]
+            a=["a", "b", "c"],
+            b=[1, 2, 3],
+            c=[True, False, True],
         )
         conn_conf = self.sql_db.connection_config()
 
@@ -40,9 +42,13 @@ class TestAcceptance:
             db.insert(data_token, insert_store)
 
             query_store = ExampleStore.link(db, data_token)
-            len(query_store)
             query_mask = query_store.b >= 2
             actual = query_store[query_mask]
 
-        expected = ExampleStore(index=[1, 2], a=["b", "c"], b=[2, 3], c=[False, True])
+        expected = ExampleStore(
+            index=[1, 2],
+            a=["b", "c"],
+            b=[2, 3],
+            c=[False, True],
+        )
         assert_that(actual, expected)

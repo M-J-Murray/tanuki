@@ -68,8 +68,11 @@ class DatabaseBackend(Generic[T], DataBackend):
         return self.query().to_pandas()
 
     @property
-    def values(self) -> DataFrame:
-        return self.to_pandas().values
+    def values(self) -> np.ndarray:
+        df = self.to_pandas()
+        if self._selected_columns == ["index"]:
+            df = df.index
+        return df.values
 
     @property
     def columns(self) -> list[str]:
@@ -161,14 +164,6 @@ class DatabaseBackend(Generic[T], DataBackend):
         )._data_backend
 
     def __setitem__(self, item: str, value: Any) -> None:
-        raise NotImplementedError()
-
-    def set_index(
-        self: DatabaseBackend, column: Union[str, Iterable]
-    ) -> DatabaseBackend:
-        raise NotImplementedError()
-
-    def reset_index(self: DatabaseBackend, drop: bool = False) -> DatabaseBackend:
         raise NotImplementedError()
 
     def append(

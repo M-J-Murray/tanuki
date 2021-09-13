@@ -18,7 +18,6 @@ from src.database.database_registrar import DatabaseRegistrar
 from src.database.reference_tables import (
     PROTECTED_GROUP,
     StoreDefinition,
-    TableReference,
 )
 
 

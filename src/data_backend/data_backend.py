@@ -140,14 +140,6 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def set_index(self: B, column: Union[str, Iterable]) -> B:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def reset_index(self: B, drop: bool = False) -> B:
-        raise NotImplementedError()
-
-    @abstractmethod
     def append(self: B, new_backend: B, ignore_index: bool = False) -> B:
         raise NotImplementedError()
 

@@ -97,11 +97,18 @@ class TestDatabaseBackend:
     def test_index(self) -> None:
         expected = np.array([0, 1, 2])
         index = self.db_store.index
-        print(index)
         assert_that(isinstance(index, Column), equal_to(True))
         assert_that(np.array_equal(index.values, expected), equal_to(True))
 
     def test_index_name(self) -> None:
+        assert_that(self.db_store.index.name, equal_to("index"))
+        self.db_store.set_index("a")
+        assert_that(self.db_store.index.name, equal_to("a"))
+
+    def test_set_index(self) -> None:
+        raise NotImplementedError()
+
+    def test_reset_index(self) -> None:
         raise NotImplementedError()
 
     def test_loc(self) -> None:
@@ -156,12 +163,6 @@ class TestDatabaseBackend:
         raise NotImplementedError()
 
     def test_setitem(self) -> None:
-        raise NotImplementedError()
-
-    def test_set_index(self) -> None:
-        raise NotImplementedError()
-
-    def test_reset_index(self) -> None:
         raise NotImplementedError()
 
     def test_append(self) -> None:
