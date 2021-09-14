@@ -12,11 +12,10 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    get_type_hints,
 )
 
 import numpy as np
-from pandas import DataFrame, Index, Series
+from pandas import DataFrame, Series
 
 from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
@@ -26,6 +25,7 @@ from src.data_store.data_type import Boolean, DataType, String
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
+from .index import Index
 from .index_alias import IndexAlias
 from .storable_type_factory import StorableTypeFactory
 
@@ -70,21 +70,23 @@ class DataStore:
             DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
-        self: T, **column_data: dict[str, list]
+        self: T, index: Optional[Iterable] = None, **column_data: dict[str, list]
     ) -> None:
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
-            self._data_backend = PandasBackend(column_data)
+            self._data_backend = PandasBackend(column_data, index=index)
             self._validate_data_frame()
         else:
-            self._data_backend = PandasBackend()
+            self._data_backend = PandasBackend(index=index)
         self._compile()
 
     def _compile(self: T) -> None:
         self._attach_columns()
+        self._attach_indices()
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
         self.columns = list(self._active_columns.values())
+        self.index = self._data_backend.index
         self.loc = DataStore._LocIndexer[T](self)
         self.iloc = DataStore._ILocIndexer[T](self)
 
@@ -194,6 +196,22 @@ class DataStore:
                 setattr(self, name, col(name, data))
             else:
                 setattr(self, name, None)
+
+    def _attach_indices(self: T) -> None:
+        indices = self._parse_indices()
+        active_columns = self._parse_active_columns()
+        for name, alias in indices.items():
+            col_names = [col.name for col in alias.columns]
+            has_columns = True
+            for col in col_names:
+                if col not in active_columns:
+                    has_columns = False
+                    break
+            if not has_columns:
+                setattr(self, name, None)
+            else:
+                data = self._data_backend.getitems(col_names)
+                setattr(self, name, alias(name, data))
 
     def __contains__(self: T, key):
         return str(key) in self._all_columns
@@ -322,6 +340,13 @@ class DataStore:
             raise AttributeError(
                 f"Could not match '{name}' to {self.__class__.__name__} column"
             )
+
+    def set_index(self: T, index: Union[Index, IndexAlias]) -> T:
+        col_names = [str(col) for col in index.columns]
+        return self.from_backend(self._data_backend.set_index(col_names))
+
+    def reset_index(self: T, drop: bool = False) -> T:
+        return self.from_backend(self._data_backend.reset_index(drop=drop))
 
     def append(self: T, new_store: T, ignore_index: bool = False) -> T:
         return self.from_backend(

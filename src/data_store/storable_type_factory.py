@@ -1,6 +1,6 @@
 from re import compile, Pattern
 import sys
-from typing import Type, _eval_type, cast, ClassVar, ForwardRef
+from typing import Type, cast, ClassVar, ForwardRef
 
 from .column import Column
 from .column_alias import ColumnAlias
@@ -21,10 +21,13 @@ class StorableTypeFactory:
     def eval_columns(self, bases: list[type], type_annotations: dict[str, str]) -> dict[str, ColumnAlias]:
         columns = {}
         missing_types = []
-        for name, type_str in type_annotations.items():
-            if type_str[:6] != "Column":
-                continue
-            col_type = self._eval_column_type(bases, type_str)
+        for name, type_hint in type_annotations.items():
+            if isinstance(type_hint, str):
+                if type_hint[:6] != "Column":
+                    continue
+                col_type = self._eval_column_type(bases, type_hint)
+            else:
+                col_type = type_hint
             if col_type is Column or type(col_type) is Column:
                 missing_types.append(name)
             elif col_type is ColumnAlias:
@@ -42,10 +45,10 @@ class StorableTypeFactory:
     def _eval_column_type(bases: list[type], type_str: str) -> Type:
         ref = ForwardRef(type_str, is_argument=False)
         found_type = None
-        for base in reversed(bases):
+        for base in reversed(bases[:-1]):
             base_globals = sys.modules[base.__module__].__dict__
             try:
-                found_type = _eval_type(ref, base_globals, None)
+                found_type = ref._evaluate(base_globals, None, frozenset())
             except:
                 pass
         if found_type is None:

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from abc import abstractclassmethod, abstractmethod, abstractproperty
-from typing import Any, Generator, Generic, Iterable, Optional, Type, TypeVar, Union
+from typing import Any, Generator, Generic, Optional, Type, TypeVar, Union
 
 import numpy as np
-from pandas import Index
-from pandas.core.frame import DataFrame
+from pandas import DataFrame
 
 from src.data_store.data_type import DataType
 from src.database.data_token import DataToken
@@ -60,7 +59,7 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractproperty
-    def index(self) -> Index:
+    def index(self) -> B:
         raise NotImplementedError()
 
     @abstractproperty
@@ -137,6 +136,14 @@ class DataBackend:
 
     @abstractmethod
     def __setitem__(self, item: str, value: Any) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def set_index(self: B, columns: tuple[str, ...]) -> B:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def reset_index(self: B, drop: bool = False) -> B:
         raise NotImplementedError()
 
     @abstractmethod

@@ -129,7 +129,7 @@ class TestDataStore:
         assert_that(example_row.b, equal_to(None))
         assert_that(len(example_row.c), equal_to(0))
 
-        example_row = ExampleStore({})
+        example_row = ExampleStore()
         assert_that(example_row.a, equal_to(None))
         assert_that(example_row.b, equal_to(None))
         assert_that(example_row.c, equal_to(None))
@@ -164,17 +164,40 @@ class TestDataStore:
         actual_series = test_slice.loc[2]
         assert_that(actual_series.equals(self.test_row2), is_(True))
 
-    def test_set_index(self) -> None:
-        test_slice = self.test_store.iloc[[0, 2]]
-        assert_that(test_slice.index.tolist(), equal_to([0, 2]))
-        test_slice = test_slice.set_index("b")
-        assert_that(test_slice.index.tolist(), equal_to([1, 3]))
-
     def test_get_index(self) -> None:
         assert_that(self.test_store.index.tolist(), equal_to([0, 1, 2]))
+        assert_that(self.test_store["index"].tolist(), equal_to([0, 1, 2]))
+        assert_that(self.test_store.a_index.tolist(), equal_to(["a", "b", "c"]))
+        assert_that(
+            self.test_store.ab_index.tolist(), equal_to([["a", 1], ["b", 2], ["c", 3]])
+        )
         test_slice = self.test_store.iloc[[0, 2]]
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))
         assert_that(test_slice["index"].tolist(), equal_to([0, 2]))
+        assert_that(test_slice.a_index.tolist(), equal_to(["a", "c"]))
+        assert_that(test_slice.ab_index.tolist(), equal_to([["a", 1], ["c", 3]]))
+
+    def test_set_index(self) -> None:
+        assert_that(self.test_store.index.tolist(), equal_to([0, 1, 2]))
+
+        new_store = self.test_store.set_index(self.test_store.a_index)
+        assert_that(new_store.index.tolist(), equal_to(["a", "b", "c"]))
+
+        new_store = self.test_store.set_index(ExampleStore.ab_index)
+        assert_that(new_store.index.tolist(), equal_to([("a", 1), ("b", 2), ("c", 3)]))
+
+    def test_reset_index(self) -> None:
+        test_slice = self.test_store.iloc[[0, 2]]
+        assert_that(test_slice.index.tolist(), equal_to([0, 2]))
+
+        test_slice = test_slice.reset_index(drop=True)
+        assert_that(test_slice.index.tolist(), equal_to([0, 1]))
+
+        test_slice = self.test_store.set_index(ExampleStore.ab_index)
+        assert_that(test_slice.index.tolist(), equal_to([("a", 1), ("b", 2), ("c", 3)]))
+
+        test_slice = test_slice.reset_index(drop=True)
+        assert_that(test_slice.index.tolist(), equal_to([0, 1, 2]))
 
     def test_append(self) -> None:
         actual = self.test_store.append(
@@ -200,12 +223,6 @@ class TestDataStore:
             a=["a", "b", "c", "d"], b=[1, 2, 3, 4], c=[True, False, True, False]
         )
         assert_that(actual.equals(expected), is_(True))
-
-    def test_reset_index(self) -> None:
-        test_slice = self.test_store.iloc[[0, 2]]
-        assert_that(test_slice.index.tolist(), equal_to([0, 2]))
-        test_slice = test_slice.reset_index(drop=True)
-        assert_that(test_slice.index.tolist(), equal_to([0, 1]))
 
     def test_contains(self) -> None:
         assert_that("a", is_in(self.test_store))

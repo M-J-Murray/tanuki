@@ -169,6 +169,12 @@ class PandasBackend(DataBackend):
             value = value._data
         self._data[items] = value
 
+    def set_index(self, columns: tuple[str, ...]) -> PandasBackend:
+        return PandasBackend(self._data.set_index(columns))
+
+    def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
+        return PandasBackend(self._data.reset_index(drop=drop))
+
     def append(
         self: PandasBackend, new_backend: PandasBackend, ignore_index: bool
     ) -> PandasBackend:
