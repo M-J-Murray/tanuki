@@ -4,11 +4,10 @@ import pickle
 from types import new_class
 from typing import Any, Type, TypeVar
 
-from pandas.core.indexes.base import Index
-
 from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Bytes
+from src.data_store.index import Index
 from src.database.data_token import DataToken
 
 T = TypeVar("T", bound=DataStore)
@@ -25,6 +24,8 @@ class TableReference(DataStore, version=1):
     store_type: Column[str]
     store_version: Column[int]
     protected: Column[bool]
+
+    table_group_index: Index[table_name, data_group]
 
     def data_tokens(self: TableReference) -> list[DataToken]:
         return [
@@ -53,6 +54,8 @@ class StoreReference(DataStore, version=1):
     definition_reference: Column[str]
     definition_version: Column[int]
 
+    type_version_index: Index[store_type, store_type]
+
     def store_versions(self: StoreReference) -> dict[str, set[int]]:
         store_versions: dict[str, set[int]] = {}
         for _, type, version, _, _ in self.itertuples():
@@ -75,6 +78,8 @@ class StoreReference(DataStore, version=1):
 class StoreDefinition(DataStore, version=1):
     column_name: Column[str]
     column_type: Column[Bytes]
+
+    name_type_index: Index[column_name, column_type]
 
     @staticmethod
     def data_token(store_type: Type[T]) -> DataToken:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from test.helpers.example_store import ExampleStore
 from typing import cast
 
@@ -9,6 +11,7 @@ from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Boolean, Int64, String
+from src.data_store.index import Index
 
 
 class TestDataStore:
@@ -176,6 +179,48 @@ class TestDataStore:
         assert_that(test_slice["index"].tolist(), equal_to([0, 2]))
         assert_that(test_slice.a_index.tolist(), equal_to(["a", "c"]))
         assert_that(test_slice.ab_index.tolist(), equal_to([["a", 1], ["c", 3]]))
+
+    def test_invalid_index_reference(self) -> None:
+        try:
+            class TempStore(DataStore):
+                a: Column[str]
+                index: Index[a]
+
+            fail("Expected exception")
+        except Exception as e:
+            assert_that(
+                "Cannot name index 'index', 'index' is reserved word in datastore",
+                is_in(str(e)),
+            )
+
+    def test_invalid_index_missing_reference(self) -> None:
+        try:
+            class TempStore(DataStore):
+                a: Column[str]
+
+                a_index: Index
+
+            fail("Expected exception")
+        except Exception as e:
+            assert_that(
+                "No columns were attached to index 'a_index'",
+                is_in(str(e)),
+            )
+            
+    
+    def test_invalid_index_invalid_reference(self) -> None:
+        try:
+            class TempStore(DataStore):
+                a: Column[str]
+
+                b_index: Index[b]
+
+            fail("Expected exception")
+        except Exception as e:
+            assert_that(
+                "Failed to find the following columns from 'b_index' index: {'b'}",
+                is_in(str(e)),
+            )
 
     def test_set_index(self) -> None:
         assert_that(self.test_store.index.tolist(), equal_to([0, 1, 2]))

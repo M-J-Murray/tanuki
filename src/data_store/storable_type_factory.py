@@ -9,7 +9,7 @@ from .index_alias import IndexAlias
 
 
 class StorableTypeFactory:
-    TYPE_MATCHER: ClassVar[Pattern] = compile(r"^Index(?:\[(.*)\])$")
+    TYPE_MATCHER: ClassVar[Pattern] = compile(r"^Index(?:\[(.*)\])?$")
     
     columns: dict[str, ColumnAlias]
     indices: dict[str, IndexAlias]
@@ -59,20 +59,28 @@ class StorableTypeFactory:
     def eval_indices(self, type_annotations: dict[str, str]) -> dict[str, IndexAlias]:
         indices = {}
         for name, type_str in type_annotations.items():
+            if not isinstance(type_str, str):
+                continue
             match = self.TYPE_MATCHER.match(type_str)
             if match is not None:
                 type_args: str = match.group(1)
+                if type_args is None:
+                    raise TypeError(f"No columns were attached to index '{name}'")
                 type_args = [type_arg.strip() for type_arg in type_args.split(",")]
                 indices[name] = self._eval_index(name, type_args)
+
+        if "index" in indices:
+            raise TypeError("Cannot name index 'index', 'index' is reserved word in datastore")
+        
         return indices
 
     def _eval_index(self, index_name: str, type_args: list[str]) -> IndexAlias:
         if len(type_args) == 0:
-            raise TypeError(f"No columns were attached to index {index_name}")
+            raise TypeError(f"No columns were attached to index '{index_name}'")
         
         missing_columns = set(type_args) - set(self.columns.keys())
         if len(missing_columns) > 0:
-            raise TypeError(f"Failed to find columns: {missing_columns}")
+            raise TypeError(f"Failed to find the following columns from '{index_name}' index: {missing_columns}")
 
         column_aliases = [self.columns[column] for column in type_args]
         return IndexAlias(index_name, column_aliases)

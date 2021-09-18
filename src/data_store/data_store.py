@@ -108,7 +108,7 @@ class DataStore:
             columns = cls._parse_columns().keys()
         else:
             columns = [str(col) for col in columns]
-        data = DataFrame.from_records(data_rows, columns=columns)
+        data = DataFrame.from_records(data_rows, index="index", columns=["index"] + list(columns))
         return cls.from_backend(PandasBackend(data))
 
     @classmethod
