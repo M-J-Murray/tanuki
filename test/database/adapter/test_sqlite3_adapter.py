@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import shutil
 import tempfile
-from test.helpers.example_store import ExampleStore
+from test.helpers.example_store import RAW_GROUP, ExampleStore
 from test.helpers.sqlite3_container import Sqlite3Container
 
 from hamcrest import assert_that, equal_to, is_, is_in, not_
@@ -97,6 +97,19 @@ class TestSqlite3Adapter:
         assert_that(self.db_adapter.has_group(token.data_group), equal_to(False))
         assert_that(self.db_adapter.has_group_table(token), equal_to(False))
 
+    def test_create_index(self) -> None:
+        test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
+        self.db_adapter.create_group(ExampleStore.data_token.data_group)
+        self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
+        self.db_adapter.create_index(ExampleStore.data_token, ExampleStore.a_index)
+
+        token2 = DataToken("test2", RAW_GROUP)
+        self.db_adapter.create_group_table(token2, ExampleStore)
+        self.db_adapter.create_index(token2, ExampleStore.a_index)
+
+        assert_that(self.db_adapter.has_index(ExampleStore.data_token, ExampleStore.a_index))
+        self.db_adapter.insert(ExampleStore.data_token, test1)
+
     def test_insert_from_values(self) -> None:
         test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
         self.db_adapter.create_group(ExampleStore.data_token.data_group)
@@ -108,9 +121,9 @@ class TestSqlite3Adapter:
         assert_that(queried1.equals(test1), is_(True))
 
         test2 = ExampleStore(a=["d"], b=[4], c=[False])
-        self.db_adapter.insert(ExampleStore.data_token, test2, ignore_index=True)
+        self.db_adapter.insert(ExampleStore.data_token, test2)
 
-        test3 = ExampleStore.concat([test1, test2], ignore_index=True)
+        test3 = ExampleStore.concat([test1, test2])
         raw2 = self.db_adapter.query(ExampleStore.data_token)
         queried2 = ExampleStore.from_rows(raw2)
 
@@ -129,12 +142,12 @@ class TestSqlite3Adapter:
         queried1 = ExampleStore.from_rows(raw1)
         assert_that(queried1.equals(test1), is_(True))
 
-        test2 = ExampleStore(index=[1], a=["d"], b=[4], c=[True])
-        self.db_adapter.update(ExampleStore.data_token, test2, [ExampleStore.index])
+        test2 = ExampleStore(a=["b"], b=[4], c=[True])
+        self.db_adapter.update(ExampleStore.data_token, test2, [ExampleStore.a])
 
         raw1 = self.db_adapter.query(ExampleStore.data_token)
         queried2 = ExampleStore.from_rows(raw1)
-        test2 = ExampleStore(a=["a", "d", "c"], b=[1, 4, 3], c=[True, True, True])
+        test2 = ExampleStore(a=["a", "b", "c"], b=[1, 4, 3], c=[True, True, True])
         assert_that(queried2.equals(test2), is_(True))
 
     def test_update_from_link(self) -> None:
@@ -150,13 +163,13 @@ class TestSqlite3Adapter:
         queried1 = ExampleStore.from_rows(raw1)
         assert_that(queried1.equals(test1), is_(True))
 
-        test2 = ExampleStore(index=[1, 3], a=["d", "e"], b=[4, 5], c=[True, False])
-        self.db_adapter.upsert(ExampleStore.data_token, test2, [ExampleStore.index])
+        test2 = ExampleStore(a=["b", "e"], b=[4, 5], c=[True, False])
+        self.db_adapter.upsert(ExampleStore.data_token, test2, [ExampleStore.a])
 
         raw1 = self.db_adapter.query(ExampleStore.data_token)
         queried2 = ExampleStore.from_rows(raw1)
         test2 = ExampleStore(
-            a=["a", "d", "c", "e"], b=[1, 4, 3, 5], c=[True, True, True, False]
+            a=["a", "b", "c", "e"], b=[1, 4, 3, 5], c=[True, True, True, False]
         )
         assert_that(queried2.equals(test2), is_(True))
 

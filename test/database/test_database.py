@@ -56,9 +56,11 @@ class TestDatabase:
         protected_tokens = [
             DataToken("table_reference", PROTECTED_GROUP),
             DataToken("store_reference", PROTECTED_GROUP),
+            DataToken("index_reference", PROTECTED_GROUP),
             DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP),
             DataToken("TableReference_v1_definition", PROTECTED_GROUP),
             DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
+            DataToken("IndexReference_v1_definition", PROTECTED_GROUP),
             DataToken("ExampleStore_v1_definition", PROTECTED_GROUP),
         ]
 
@@ -123,16 +125,6 @@ class TestDatabase:
             b=[3],
             c=[True],
         )
-        assert_that(queried.equals(expected), is_(True))
-
-    def test_drop_indices(self) -> None:
-        data = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
-        self.database.insert(ExampleStore.data_token, data)
-
-        self.database.drop_indices(ExampleStore.data_token, [1, 2])
-
-        queried = self.database.query(ExampleStore, ExampleStore.data_token)
-        expected = ExampleStore(a="a", b=1, c=True)
         assert_that(queried.equals(expected), is_(True))
 
     def test_drop_table(self) -> None:

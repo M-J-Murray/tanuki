@@ -193,6 +193,19 @@ class TestDataStore:
                 is_in(str(e)),
             )
 
+    def test_invalid_index_duplicate_reference(self) -> None:
+        try:
+            class TempStore(DataStore):
+                a: Column[str]
+                a_index: Index[a, a]
+
+            fail("Expected exception")
+        except Exception as e:
+            assert_that(
+                "Duplicated columns were attached to index 'a_index': ['a']",
+                is_in(str(e)),
+            )
+
     def test_invalid_index_missing_reference(self) -> None:
         try:
             class TempStore(DataStore):

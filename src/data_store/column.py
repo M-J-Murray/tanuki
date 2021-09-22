@@ -16,7 +16,7 @@ from typing import (
 import numpy as np
 from pandas import Index
 
-from src.data_store.data_type import Boolean, DataType, Object
+from src.data_store.data_type import Boolean, DataType, Object, TypeAlias
 
 T = TypeVar("T")
 NT = TypeVar("NT")
@@ -68,6 +68,8 @@ class Column(Generic[T]):
 
     @staticmethod
     def determine_nested_dtype(data: Iterable) -> DataType:
+        if len(data) == 0:
+            return Object
         sample = next(iter(data))
         stype = type(sample)
         if sample == data:
@@ -88,12 +90,14 @@ class Column(Generic[T]):
                 sample = data_backend.iloc[0].values[0]
                 stype = type(sample)
                 if stype is list or stype is set:
-                    dtype = Column.determine_nested_dtype(sample)
+                    dtype = DataType(GenericAlias(stype, Column.determine_nested_dtype(sample)))
                 else:
                     dtype = stype
         return DataType(dtype)
 
     def _validate_column(self: Column[T]) -> None:
+        if isinstance(self.dtype, TypeAlias):
+            return
         data_type = self.infer_dtype(self.name, self._data_backend)
         if self.dtype != data_type:
             try:
@@ -141,6 +145,9 @@ class Column(Generic[T]):
             self._data_backend.iloc[self.index[offset : offset + n]],
             dtype=self.dtype,
         )
+
+    def nunique(self) -> int:
+        return self._data_backend.nunique()[self.name]
 
     def equals(self: Column[T], other: Any) -> bool:
         if type(other) is Column:

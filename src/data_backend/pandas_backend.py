@@ -194,6 +194,9 @@ class PandasBackend(DataBackend):
         all_data = [backend._data for backend in all_backends]
         return PandasBackend(pd.concat(all_data, ignore_index=ignore_index))
 
+    def nunique(self) -> int:
+        return self._data.nunique()
+
     def __str__(self) -> str:
         return str(self._data)
 

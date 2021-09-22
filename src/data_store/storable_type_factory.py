@@ -1,10 +1,10 @@
 from re import compile, Pattern
 import sys
 from typing import Type, cast, ClassVar, ForwardRef
+from collections import Counter
 
 from .column import Column
 from .column_alias import ColumnAlias
-from .index import Index
 from .index_alias import IndexAlias
 
 
@@ -81,6 +81,10 @@ class StorableTypeFactory:
         missing_columns = set(type_args) - set(self.columns.keys())
         if len(missing_columns) > 0:
             raise TypeError(f"Failed to find the following columns from '{index_name}' index: {missing_columns}")
+
+        duplicate_cols = [col for col, count in Counter(type_args).items() if count > 1]
+        if len(duplicate_cols) > 0:
+            raise TypeError(f"Duplicated columns were attached to index '{index_name}': {duplicate_cols}")
 
         column_aliases = [self.columns[column] for column in type_args]
         return IndexAlias(index_name, column_aliases)

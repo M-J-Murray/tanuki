@@ -10,15 +10,11 @@ from test.helpers.expected_reference_tables import (
 from test.helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
-from pytest import fail
 
 from src.data_store.data_type import Boolean, Int64, String
 from src.database.data_token import DataToken
 from src.database.database_registrar import DatabaseRegistrar
-from src.database.reference_tables import (
-    PROTECTED_GROUP,
-    StoreDefinition,
-)
+from src.database.reference_tables import PROTECTED_GROUP, StoreDefinition
 
 
 class TestDatabaseRegistrar:
@@ -30,9 +26,11 @@ class TestDatabaseRegistrar:
         protected_tokens = [
             DataToken("table_reference", PROTECTED_GROUP),
             DataToken("store_reference", PROTECTED_GROUP),
+            DataToken("index_reference", PROTECTED_GROUP),
             DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP),
             DataToken("TableReference_v1_definition", PROTECTED_GROUP),
             DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
+            DataToken("IndexReference_v1_definition", PROTECTED_GROUP),
         ]
         assert_that(self.registrar.list_groups(), equal_to([]))
         assert_that(
@@ -168,9 +166,11 @@ class TestDatabaseRegistrar:
         protected_tokens = [
             DataToken("table_reference", PROTECTED_GROUP),
             DataToken("store_reference", PROTECTED_GROUP),
+            DataToken("index_reference", PROTECTED_GROUP),
             DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP),
             DataToken("TableReference_v1_definition", PROTECTED_GROUP),
             DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
+            DataToken("IndexReference_v1_definition", PROTECTED_GROUP),
             DataToken("ExampleStore_v1_definition", PROTECTED_GROUP),
         ]
 
@@ -192,9 +192,11 @@ class TestDatabaseRegistrar:
         protected_tokens = [
             DataToken("table_reference", PROTECTED_GROUP),
             DataToken("store_reference", PROTECTED_GROUP),
+            DataToken("index_reference", PROTECTED_GROUP),
             DataToken("StoreDefinition_v1_definition", PROTECTED_GROUP),
             DataToken("TableReference_v1_definition", PROTECTED_GROUP),
             DataToken("StoreReference_v1_definition", PROTECTED_GROUP),
+            DataToken("IndexReference_v1_definition", PROTECTED_GROUP),
         ]
         for token in protected_tokens:
             assert_that(self.registrar._is_table_protected(token), is_(True))
@@ -218,6 +220,7 @@ class TestDatabaseRegistrar:
         assert_that(self.registrar._has_store_type("TableReference", 1), is_(True))
         assert_that(self.registrar._has_store_type("StoreReference", 1), is_(True))
         assert_that(self.registrar._has_store_type("StoreDefinition", 1), is_(True))
+        assert_that(self.registrar._has_store_type("IndexReference", 1), is_(True))
         assert_that(
             self.registrar._has_store_type("StoreDefinition_v1_definition", 1),
             is_(False),
@@ -231,6 +234,7 @@ class TestDatabaseRegistrar:
             "TableReference": {1},
             "StoreReference": {1},
             "StoreDefinition": {1},
+            "IndexReference": {1},
         }
         assert_that(actual, equal_to(expected))
 
@@ -247,6 +251,9 @@ class TestDatabaseRegistrar:
             "StoreDefinition": DataToken(
                 "StoreDefinition_v1_definition", PROTECTED_GROUP
             ),
+            "IndexReference": DataToken(
+                "IndexReference_v1_definition", PROTECTED_GROUP
+            ),
         }
         for store_name, def_token in store_name_def_tokens.items():
             store_token, def_version = self.registrar._definition_reference_version(
@@ -261,9 +268,8 @@ class TestDatabaseRegistrar:
             DataToken("ExampleStore_v1_definition", PROTECTED_GROUP), 1
         )
         expected = StoreDefinition(
-            column_name=["index", "a", "b", "c"],
+            column_name=["a", "b", "c"],
             column_type=[
-                pickle.dumps(Int64),
                 pickle.dumps(String),
                 pickle.dumps(Int64),
                 pickle.dumps(Boolean),

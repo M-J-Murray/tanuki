@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from contextlib import closing
+from ast import literal_eval
 from pathlib import Path
-import shutil
 import sqlite3
 from sqlite3 import Connection
-from typing import Optional, TypeVar
+from typing import Optional, Type, TypeVar
 
 from src.data_store.data_store import DataStore
+from src.data_store.data_type import Array, TypeAlias
+from src.data_store.index import Index
 from src.data_store.query import EqualsQuery, MultiAndQuery, Query
-from src.database.adapter.database_adapter import DatabaseAdapter, Indexible
+from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.adapter.database_schema import DatabaseSchema
 from src.database.adapter.query.sql_query_compiler import SqlQueryCompiler
 from src.database.adapter.statement.sql_statement import SqlStatement
@@ -85,6 +86,29 @@ class Sqlite3Adapter(DatabaseAdapter):
         db_path = Path(f"{self._conn_config.uri()}/{data_group}.db")
         db_path.unlink()
 
+    def create_index(self: Sqlite3Adapter, data_token: DataToken, index: Index) -> None:
+        with self._connection:
+            col_names = [str(col) for col in index.columns]
+            statement = SqlStatement().CREATE_INDEX(index.name, data_token, col_names)
+            self._connection.execute(statement.compile())
+
+    def has_index(self: Sqlite3Adapter, data_token: DataToken, index: Index) -> bool:
+        with self._connection:
+            cursor = self._connection.execute(
+                f"PRAGMA {data_token.data_group}.index_list({data_token.table_name});"
+            )
+            data_rows = cursor.fetchall()
+            indices = set(item[1] for item in data_rows)
+            if index.name not in indices:
+                return False
+            cursor = self._connection.execute(
+                f"PRAGMA {data_token.data_group}.index_xinfo({data_token.table_name}_{index.name});"
+            )
+            data_rows = cursor.fetchall()
+            cols = set(item[2] for item in data_rows)
+            expected = set(str(col) for col in index.columns)
+            return len(expected - cols) == 0
+
     def query(
         self: Sqlite3Adapter,
         data_token: DataToken,
@@ -95,8 +119,6 @@ class Sqlite3Adapter(DatabaseAdapter):
         if columns is not None:
             clean = []
             for column in columns:
-                if column == "index":
-                    column = "idx"
                 clean.append(column)
             statement.SELECT(*clean)
         else:
@@ -118,15 +140,10 @@ class Sqlite3Adapter(DatabaseAdapter):
         self: Sqlite3Adapter,
         data_token: DataToken,
         data_store: T,
-        ignore_index: bool = False,
     ) -> None:
         with self._connection:
             columns = [str(col) for col in data_store.columns]
-            if not ignore_index:
-                columns = ["idx"] + columns
             values = ["?" for _ in range(len(data_store.columns))]
-            if not ignore_index:
-                values = ["?"] + values
 
             statement = (
                 SqlStatement()
@@ -135,7 +152,7 @@ class Sqlite3Adapter(DatabaseAdapter):
             )
             self._connection.executemany(
                 statement.compile(),
-                data_store.itertuples(ignore_index=ignore_index),
+                data_store.itertuples(ignore_index=True),
             )
 
     def _update_from_values(
@@ -150,8 +167,6 @@ class Sqlite3Adapter(DatabaseAdapter):
             for col in alignment_columns:
                 col = str(col)
                 local_alignment_columns.append(col)
-                if col == "index":
-                    col = "idx"
                 db_alignment_columns.append(col)
 
             all_columns = [str(col) for col in data_store.columns]
@@ -173,9 +188,7 @@ class Sqlite3Adapter(DatabaseAdapter):
             statement_columns = update_columns + local_alignment_columns
             self._connection.executemany(
                 statement.compile(),
-                data_store.reset_index()[statement_columns].itertuples(
-                    ignore_index=True
-                ),
+                data_store[statement_columns].itertuples(ignore_index=True),
             )
 
     def _upsert_from_values(
@@ -183,23 +196,16 @@ class Sqlite3Adapter(DatabaseAdapter):
         data_token: DataToken,
         data_store: T,
         alignment_columns: list[str],
-        ignore_index: bool = False,
     ) -> None:
         with self._connection:
-            insert_columns = [str(col) for col in data_store.columns]
-            if not ignore_index:
-                columns = ["idx"] + insert_columns
+            columns = [str(col) for col in data_store.columns]
             values = ["?" for _ in range(len(data_store.columns))]
-            if not ignore_index:
-                values = ["?"] + values
 
             local_alignment_columns = []
             db_alignment_columns = []
             for col in alignment_columns:
                 col = str(col)
                 local_alignment_columns.append(col)
-                if col == "index":
-                    col = "idx"
                 db_alignment_columns.append(col)
 
             all_columns = [str(col) for col in data_store.columns]
@@ -212,36 +218,15 @@ class Sqlite3Adapter(DatabaseAdapter):
             )
             self._connection.executemany(
                 statement.compile(),
-                data_store.itertuples(ignore_index=ignore_index),
+                data_store.itertuples(ignore_index=True),
             )
 
     def delete(self: Sqlite3Adapter, data_token: DataToken, criteria: Query) -> None:
         with self._connection:
             compiler = SqlQueryCompiler(quote=True)
             query = compiler.compile(criteria)
-            statement = (
-                SqlStatement()
-                .DELETE()
-                .FROM(data_token)
-                .WHERE(query)
-            )
+            statement = SqlStatement().DELETE().FROM(data_token).WHERE(query)
             self._connection.execute(statement.compile())
-
-    def drop_indices(
-        self: Sqlite3Adapter,
-        data_token: DataToken,
-        indices: Indexible,
-    ) -> None:
-        with self._connection:
-            values = ["?" for _ in indices]
-            statement = (
-                SqlStatement()
-                .DELETE()
-                .FROM(data_token)
-                .WHERE("idx")
-                .IN(values, quote=False)
-            )
-            self._connection.execute(statement.compile(), indices)
 
     def row_count(self: Sqlite3Adapter, data_token: DataToken) -> int:
         with self._connection:

@@ -118,6 +118,11 @@ class SqlStatement:
         )
         return self
 
+    def CREATE_INDEX(self: "SqlStatement", index_name: str, data_token: DataToken, column_list: list[str]) -> "SqlStatement":
+        col_str = ",".join(column_list)
+        self._commands.append(f"CREATE UNIQUE INDEX {data_token.data_group}.{data_token.table_name}_{index_name} ON {data_token.table_name} ({col_str})")
+        return self
+
     def ATTACH_DATABASE(self: "SqlStatement", file_path: str, data_group: str) -> "SqlStatement":
         self._commands.append(f"ATTACH DATABASE '{file_path}/{data_group}.db'")
         return self

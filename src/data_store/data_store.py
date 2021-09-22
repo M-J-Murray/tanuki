@@ -21,7 +21,7 @@ from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.data_type import Boolean, DataType, String
+from src.data_store.data_type import Boolean, DataType, String, TypeAlias
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
@@ -105,10 +105,10 @@ class DataStore:
         cls: Type[T], data_rows: list[tuple], columns: Optional[list[str]] = None
     ) -> T:
         if columns is None:
-            columns = cls._parse_columns().keys()
+            columns = list(cls._parse_columns().keys())
         else:
             columns = [str(col) for col in columns]
-        data = DataFrame.from_records(data_rows, index="index", columns=["index"] + list(columns))
+        data = DataFrame.from_records(data_rows, columns=columns)
         return cls.from_backend(PandasBackend(data))
 
     @classmethod
@@ -174,6 +174,8 @@ class DataStore:
 
         invalid_types = []
         for name, col in columns.items():
+            if isinstance(col.dtype, TypeAlias):
+                continue
             col_data = self._data_backend[name]
             data_dtype = Column.infer_dtype(name, col_data)
             # TODO: Run in batch

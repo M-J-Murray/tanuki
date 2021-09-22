@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import UnsupportedOperation
 from typing import Optional
 
-from src.data_store.data_type import DataType
+from src.data_store.data_type import DataType, TypeAlias
 
 from .column import Column
 
@@ -32,7 +32,10 @@ class ColumnAlias:
         return self.name
 
     def __repr__(self) -> str:
-        repr_def = f"{Column.__name__}[{self.dtype.__name__}]"
+        temp = self.dtype
+        if not isinstance(temp, TypeAlias):
+            temp = temp.__name__
+        repr_def = f"{Column.__name__}[{str(temp)}]"
         if self.name is not None:
             repr_def = f"{self.name}: {repr_def}"
         return repr_def

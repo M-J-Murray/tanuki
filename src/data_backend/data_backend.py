@@ -159,6 +159,10 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
+    def nunique(self: B) -> int:
+        raise NotImplementedError()
+
+    @abstractmethod
     def __str__(self: B) -> str:
         raise NotImplementedError()
 

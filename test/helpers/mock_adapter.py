@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import reduce
 from typing import Any, Optional, TypeVar
 
 import pandas as pd
@@ -8,8 +7,9 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.data_store import DataStore
+from src.data_store.index import Index
 from src.data_store.query import Query
-from src.database.adapter.database_adapter import DatabaseAdapter, Indexible
+from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
 from src.database.data_token import DataToken
 
@@ -18,9 +18,11 @@ T = TypeVar("T", bound=DataStore)
 
 class MockAdapter(DatabaseAdapter):
     group_tables: dict[str, dict[str, DataFrame]]
+    table_indices: dict[DataToken, list[str]]
 
     def __init__(self) -> None:
         self.group_tables = {}
+        self.table_indices = {}
 
     def has_group(self: MockAdapter, data_group: str) -> bool:
         return data_group in self.group_tables
@@ -41,12 +43,27 @@ class MockAdapter(DatabaseAdapter):
             data_token.table_name
         ] = data_store_type().to_pandas()
 
-    
     def drop_group(self: MockAdapter, data_group: str) -> None:
         del self.group_tables[data_group]
+        for token in self.table_indices.keys():
+            if data_group == token.data_group:
+                del self.table_indices[token]
+
 
     def drop_group_table(self: MockAdapter, data_token: DataToken) -> None:
         del self.group_tables[data_token.data_group][data_token.table_name]
+        if data_token in self.table_indices:
+            del self.table_indices[data_token]
+
+    def create_index(
+        self: MockAdapter, data_token: DataToken, index: Index
+    ) -> None:
+        if data_token not in self.table_indices:
+            self.table_indices[data_token] = []
+        self.table_indices[data_token].append(index.name)
+
+    def has_index(self: MockAdapter, data_token: DataToken, index: Index) -> bool:
+        return data_token in self.table_indices and index.name in self.table_indices[data_token]
 
     def insert(
         self: MockAdapter,
@@ -80,16 +97,7 @@ class MockAdapter(DatabaseAdapter):
                 data = data[query]
         if columns is not None:
             data = data[columns]
-        if columns is None or "index" in columns:
-            return [row for row in data.itertuples()]
-        else:
-            result = []
-            for row in data.itertuples():
-                if len(row) == 2:
-                    result.append((row[1],))
-                else:
-                    result.append(row[1:])
-            return result
+        return [row for row in data.itertuples(index=False)]
 
     def update(
         self: MockAdapter,
@@ -130,4 +138,6 @@ class MockAdapter(DatabaseAdapter):
         self: MockAdapter, data_token: DataToken, indices: Indexible
     ) -> None:
         data = self.group_tables[data_token.data_group][data_token.table_name]
-        self.group_tables[data_token.data_group][data_token.table_name] = data.drop(indices)
+        self.group_tables[data_token.data_group][data_token.table_name] = data.drop(
+            indices
+        )

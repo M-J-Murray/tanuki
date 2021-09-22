@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from datetime import datetime, timedelta
 from types import GenericAlias
-from typing import Any, cast, ClassVar
+from typing import Any, cast, ClassVar, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -237,6 +237,8 @@ class Bytes(DataType):
         return (bytes,)
 
 
+DT = TypeVar("DT", bound=DataType)
+
 class Array(DataType):
     @classmethod
     def pdtype(cls):
@@ -284,6 +286,10 @@ class TypeAlias(DataType):
         return f"{alias_name}[{nested_name}]"
 
     def __repr__(self) -> str:
+        return str(self)
+
+    @property
+    def __name__(self) -> str:
         return str(self)
 
     def __hash__(self) -> int:

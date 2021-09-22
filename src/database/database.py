@@ -3,8 +3,6 @@ from __future__ import annotations
 from types import TracebackType
 from typing import Any, cast, Optional, Type, TypeVar, Union
 
-from pandas import Index
-
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_type import DataType
 from src.data_store.query import Query
@@ -13,9 +11,6 @@ from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
 from .database_registrar import DatabaseRegistrar
 from .db_exceptions import MissingTableError
-
-Indexible = Union[Any, list, Index]
-
 
 class Database:
     _db_adapter: DatabaseAdapter
@@ -64,11 +59,11 @@ class Database:
         return cast(store_type, store)
 
     def insert(
-        self: Database, data_token: DataToken, data_store: T, ignore_index: bool = False
+        self: Database, data_token: DataToken, data_store: T
     ) -> None:
         if not self._registrar.has_table(data_token):
             self._registrar.create_table(data_token, data_store.__class__)
-        self._db_adapter.insert(data_token, data_store, ignore_index)
+        self._db_adapter.insert(data_token, data_store)
 
     def update(
         self: Database,
@@ -96,11 +91,6 @@ class Database:
         if not self._registrar.has_table(data_token):
             raise MissingTableError(data_token)
         self._db_adapter.delete(data_token, criteria)
-
-    def drop_indices(self: Database, data_token: DataToken, indices: Indexible) -> None:
-        if not self._registrar.has_table(data_token):
-            raise MissingTableError(data_token)
-        self._db_adapter.drop_indices(data_token, indices)
 
     def drop_table(self: Database, data_token: DataToken) -> None:
         self._registrar.drop_table(data_token)

@@ -10,6 +10,10 @@ class DataToken:
         self.table_name = table_name
         self.data_group = data_group
 
+    def __iter__(self) -> str:
+        yield self.table_name
+        yield self.data_group
+
     def to_sql(self: "DataToken") -> str:
         return f"{self.data_group}.{self.table_name}"
 

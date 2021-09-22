@@ -9,6 +9,7 @@ from src.database.data_token import DataToken
 
 from .db_exceptions import DatabaseCorruptionError, MissingGroupError, MissingTableError
 from .reference_tables import (
+    IndexReference,
     PROTECTED_GROUP,
     StoreDefinition,
     StoreReference,
@@ -37,17 +38,22 @@ class DatabaseRegistrar:
             self._db_adapter.create_group(PROTECTED_GROUP)
         self._db_adapter.create_group_table(TableReference.data_token, TableReference)
         self._db_adapter.create_group_table(StoreReference.data_token, StoreReference)
+        self._db_adapter.create_group_table(IndexReference.data_token, IndexReference)
         self._register_table(TableReference.data_token, TableReference, protected=True)
         self._register_table(StoreReference.data_token, StoreReference, protected=True)
+        self._register_table(IndexReference.data_token, IndexReference, protected=True)
         self._register_store_class(StoreDefinition)
         self._register_store_class(TableReference)
         self._register_store_class(StoreReference)
+        self._register_store_class(IndexReference)
 
     def _validate_reference_tables(self):
         if not self._db_adapter.has_group_table(TableReference.data_token):
             raise DatabaseCorruptionError("TableReference table is missing")
         if not self._db_adapter.has_group_table(StoreReference.data_token):
             raise DatabaseCorruptionError("StoreReference table is missing")
+        if not self._db_adapter.has_group_table(IndexReference.data_token):
+            raise DatabaseCorruptionError("IndexReference table is missing")
 
         exceptions = []
         error_messages = []
@@ -57,6 +63,7 @@ class DatabaseRegistrar:
                     raise MissingGroupError(data_token.data_group)
                 if not self._db_adapter.has_group_table(data_token):
                     raise MissingTableError(data_token)
+
                 store_type, store_version = self._table_store_type_version(data_token)
                 token_version = self._definition_reference_version(
                     store_type, store_version
@@ -70,7 +77,17 @@ class DatabaseRegistrar:
                 type_class = store_definition._store_class(store_type, store_version)
                 if not issubclass(type_class, DataStore):
                     raise DatabaseCorruptionError(
-                        f"Recieved invalid data store class for {data_token}"
+                        f"Received invalid data store class for {data_token}"
+                    )
+
+                missing_indices = []
+                for index in type_class.indices:
+                    if not self._db_adapter.has_index(data_token, index):
+                        missing_indices.append(index)
+                if len(missing_indices) > 0:
+                    ind_str = "\n".join([str(ind) for ind in missing_indices])
+                    raise DatabaseCorruptionError(
+                        f"The following indices were not attached to {data_token}:\n{ind_str}"
                     )
 
             except Exception as e:
@@ -79,7 +96,7 @@ class DatabaseRegistrar:
 
         if len(exceptions) > 0:
             error_message = (
-                f"The following exception occured when validating the database state:\n"
+                f"The following exception occurred when validating the database state:\n"
                 + "\n".join(error_messages)
             )
             raise DatabaseCorruptionError(error_message, *exceptions)
@@ -93,14 +110,22 @@ class DatabaseRegistrar:
         if not self.has_group(data_token.data_group):
             self._db_adapter.create_group(data_token.data_group)
         self._db_adapter.create_group_table(data_token, store_class)
+        self._create_table_indices(data_token, store_class)
         self._register_table(data_token, store_class, protected)
         self._register_store_class(store_class)
+
+    def _create_table_indices(
+        self: DatabaseRegistrar, data_token: DataToken, store_class: Type[T]
+    ) -> None:
+        for index in store_class.indices:
+            self._db_adapter.create_index(data_token, index)
 
     def drop_table(self: DatabaseRegistrar, data_token: DataToken) -> None:
         if not self.has_table(data_token):
             raise MissingTableError(data_token)
         if self._is_table_protected(data_token):
             raise UnsupportedOperation("Cannot delete from protected data group")
+
         self._db_adapter.drop_group_table(data_token)
         store_type, store_version = self._table_store_type_version(data_token)
 
@@ -121,6 +146,11 @@ class DatabaseRegistrar:
 
         if len(self.list_group_tables(data_token.data_group)) == 0:
             self._db_adapter.drop_group(data_token.data_group)
+
+        store_indices = (IndexReference.store_type == store_type) & (
+            TableReference.store_version == store_version
+        )
+        self._db_adapter.delete(IndexReference.data_token, store_indices)
 
     def drop_group(self: DatabaseRegistrar, data_group: str) -> None:
         if not self.has_group(data_group):
@@ -181,15 +211,11 @@ class DatabaseRegistrar:
             return registrar_result
 
     def _table_references(self, criteria: Optional[Query] = None) -> TableReference:
-        table_rows = self._db_adapter.query(
-            TableReference.data_token, query=criteria
-        )
+        table_rows = self._db_adapter.query(TableReference.data_token, query=criteria)
         return TableReference.from_rows(table_rows)
 
     def _store_references(self, criteria: Optional[Query] = None) -> StoreReference:
-        table_rows = self._db_adapter.query(
-            StoreReference.data_token, query=criteria
-        )
+        table_rows = self._db_adapter.query(StoreReference.data_token, query=criteria)
         return StoreReference.from_rows(table_rows)
 
     def list_tables(self) -> list[DataToken]:
@@ -232,21 +258,20 @@ class DatabaseRegistrar:
     ) -> None:
         if not self._is_table_registered(data_token):
             reference = TableReference.create_row(data_token, store_class, protected)
-            self._db_adapter.insert(
-                TableReference.data_token, reference, ignore_index=True
-            )
+            self._db_adapter.insert(TableReference.data_token, reference)
 
     def _register_store_class(self, store_class: Type[T]) -> None:
         if not self._has_store_type(store_class.__name__, store_class.version):
             reference = StoreReference.create_row(store_class)
-            self._db_adapter.insert(
-                StoreReference.data_token, reference, ignore_index=True
-            )
+            self._db_adapter.insert(StoreReference.data_token, reference)
             reference_token = StoreDefinition.data_token(store_class)
             self.create_table(reference_token, StoreDefinition, protected=True)
             self._db_adapter.insert(
                 reference_token, StoreDefinition.from_type(store_class)
             )
+            # Insert indices
+            index_reference = IndexReference.from_type(store_class)
+            self._db_adapter.insert(IndexReference.data_token, index_reference)
 
     def _table_store_type_version(self, data_token: DataToken) -> tuple[str, int]:
         if not self._db_adapter.has_group_table(TableReference.data_token):
@@ -278,7 +303,9 @@ class DatabaseRegistrar:
                 TableReference.data_group == data_token.data_group
             )
             table_rows = self._db_adapter.query(
-                TableReference.data_token, criteria, [str(TableReference.protected)]
+                TableReference.data_token,
+                criteria,
+                [str(TableReference.protected)],
             )
             if len(table_rows) == 0:
                 raise MissingTableError(data_token)
@@ -294,12 +321,11 @@ class DatabaseRegistrar:
         else:
             criteria = TableReference.data_group == data_group
             table_rows = self._db_adapter.query(
-                TableReference.data_token, criteria, [str(TableReference.protected)]
+                TableReference.data_token,
+                criteria,
+                [str(TableReference.protected)],
             )
-            return any([
-                item[0] 
-                for item in table_rows
-            ])
+            return any([item[0] for item in table_rows])
 
     def _has_store_type(self, store_name: str, store_version: int):
         type_versions = self._store_references().store_versions()
@@ -347,7 +373,7 @@ class DatabaseRegistrar:
                     f"Cannot deserialise data store type for version {definition_version}"
                 )
             def_rows = self._db_adapter.query(reference_token)
-            return StoreDefinition.from_rows(def_rows)        
+            return StoreDefinition.from_rows(def_rows)
 
     def store_class(self, data_token: DataToken) -> Type[T]:
         store_type, store_version = self._table_store_type_version(data_token)
@@ -355,7 +381,16 @@ class DatabaseRegistrar:
             store_type, store_version
         )
         store_definition = self._store_definition(reference_token, definition_version)
-        return store_definition._store_class(store_type, store_version)
+
+        # Query indices
+        store_indices = (IndexReference.store_type == store_type) & (
+            IndexReference.store_version == store_version
+        )
+        index_rows = self._db_adapter.query(IndexReference.data_token, store_indices)
+        index_reference = IndexReference.from_rows(index_rows)
+        index_columns = index_reference.index_columns()
+
+        return store_definition._store_class(store_type, store_version, index_columns)
 
     def _drop_store_type(self, store_type: str, store_version: int) -> None:
         reference_token, _ = self._definition_reference_version(

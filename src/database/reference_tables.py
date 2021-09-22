@@ -54,7 +54,7 @@ class StoreReference(DataStore, version=1):
     definition_reference: Column[str]
     definition_version: Column[int]
 
-    type_version_index: Index[store_type, store_type]
+    type_version_index: Index[store_type, store_version]
 
     def store_versions(self: StoreReference) -> dict[str, set[int]]:
         store_versions: dict[str, set[int]] = {}
@@ -79,7 +79,7 @@ class StoreDefinition(DataStore, version=1):
     column_name: Column[str]
     column_type: Column[Bytes]
 
-    name_type_index: Index[column_name, column_type]
+    name_index: Index[column_name]
 
     @staticmethod
     def data_token(store_type: Type[T]) -> DataToken:
@@ -91,18 +91,28 @@ class StoreDefinition(DataStore, version=1):
     @staticmethod
     def from_type(store_type: Type[T]) -> StoreDefinition:
         builder = StoreDefinition.builder()
+
         for name, column in store_type._parse_columns().items():
-            builder.append_row(column_name=name, column_type=pickle.dumps(column.dtype))
+            builder.append_row(
+                column_name=name,
+                column_type=pickle.dumps(column.dtype),
+            )
+
         return builder.build()
 
     def _store_class(
         self: StoreDefinition,
         store_type: str,
         store_version: int,
+        index_columns: dict[str, list[str]],
     ) -> Type[T]:
         annotations = {}
-        for _, name, type in self.itertuples():
+        for name, type in self.itertuples(ignore_index=True):
             annotations[name] = Column[pickle.loads(type)]
+
+        for index, columns in index_columns.items():
+            cols_str = ",".join(columns)
+            annotations[index] = f"Index[{cols_str}]"
 
         functions = {}
         if store_type in DataStore.registered_stores:
@@ -124,3 +134,41 @@ class StoreDefinition(DataStore, version=1):
             {"version": store_version, "register": False},
             add_columns,
         )
+
+
+class IndexReference(DataStore, version=1):
+    data_token = DataToken(f"index_reference", PROTECTED_GROUP)
+
+    store_type: Column[str]
+    store_version: Column[int]
+    index_name: Column[str]
+    column_name: Column[str]
+
+    complete_index: Index[store_type, store_version, index_name, column_name]
+
+    @staticmethod
+    def from_type(store_type: Type[T]) -> IndexReference:
+        builder = IndexReference.builder()
+
+        for index in store_type.indices:
+            for col in index.columns:
+                builder.append_row(
+                    store_type=store_type.__name__,
+                    store_version=store_type.version,
+                    index_name=index.name,
+                    column_name=col.name,
+                )
+
+        return builder.build()
+
+    def index_columns(self) -> dict[str, list[str]]:
+        if self.store_type.nunique() > 1 or self.store_version.nunique() > 1:
+            raise RuntimeError("Cannot request index columns on multiple data stores")
+        
+        index_columns: dict[str, list[str]] = {}
+        for _, _, index, column in self.itertuples(ignore_index=True):
+            if index not in index_columns:
+                index_columns[index] = []
+            index_columns[index].append(column)
+        return index_columns
+        
