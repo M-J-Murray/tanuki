@@ -383,6 +383,16 @@ class TestDataStore:
             assert_that(str(actual_column), equal_to(expected_name))
             assert_that(actual_column.dtype, equal_to(expected_type))
 
+    def test_indices(self) -> None:
+        expected_inds = {"a_index": ["a"], "ab_index": ["a", "b"]}
+        assert_that(len(self.test_store.indices), equal_to(len(expected_inds)))
+        for actual, expected in zip(self.test_store.indices, expected_inds):
+            assert_that(actual.name, equal_to(expected))
+            expected_cols = expected_inds[expected]
+            assert_that(len(actual.columns), equal_to(len(expected_cols)))
+            actual_cols = [str(col) for col in actual.columns]
+            assert_that(actual_cols, equal_to(expected_cols))
+
     def test_iter(self) -> None:
         # Test dataframe
         columns = ["a", "b", "c"]

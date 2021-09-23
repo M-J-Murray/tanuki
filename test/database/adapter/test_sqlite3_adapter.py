@@ -108,6 +108,7 @@ class TestSqlite3Adapter:
         self.db_adapter.create_index(token2, ExampleStore.a_index)
 
         assert_that(self.db_adapter.has_index(ExampleStore.data_token, ExampleStore.a_index))
+        assert_that(self.db_adapter.has_index(token2, ExampleStore.a_index))
         self.db_adapter.insert(ExampleStore.data_token, test1)
 
     def test_insert_from_values(self) -> None:
@@ -157,6 +158,7 @@ class TestSqlite3Adapter:
         test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
         self.db_adapter.create_group(ExampleStore.data_token.data_group)
         self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
+        self.db_adapter.create_index(ExampleStore.data_token, ExampleStore.a_index)
         self.db_adapter.insert(ExampleStore.data_token, test1)
 
         raw1 = self.db_adapter.query(ExampleStore.data_token)
@@ -190,21 +192,4 @@ class TestSqlite3Adapter:
         raw2 = self.db_adapter.query(ExampleStore.data_token)
         queried2 = ExampleStore.from_rows(raw2)
         test2 = ExampleStore(a=["a", "c"], b=[1, 3], c=[True, True])
-        assert_that(queried2.equals(test2), is_(True))
-
-    def test_drop_indices(self) -> None:
-        test1 = ExampleStore(a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True])
-        self.db_adapter.create_group(ExampleStore.data_token.data_group)
-        self.db_adapter.create_group_table(ExampleStore.data_token, ExampleStore)
-        self.db_adapter.insert(ExampleStore.data_token, test1)
-
-        raw1 = self.db_adapter.query(ExampleStore.data_token)
-        queried1 = ExampleStore.from_rows(raw1)
-        assert_that(queried1.equals(test1), is_(True))
-
-        self.db_adapter.drop_indices(ExampleStore.data_token, [1])
-
-        test2 = ExampleStore(a=["a", "c"], b=[1, 3], c=[True, True])
-        raw2 = self.db_adapter.query(ExampleStore.data_token)
-        queried2 = ExampleStore.from_rows(raw2)
         assert_that(queried2.equals(test2), is_(True))

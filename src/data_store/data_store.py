@@ -21,7 +21,7 @@ from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.data_type import Boolean, DataType, String, TypeAlias
+from src.data_store.data_type import Boolean, DataType, Int64, String, TypeAlias
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
@@ -86,7 +86,7 @@ class DataStore:
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
         self.columns = list(self._active_columns.values())
-        self.index = self._data_backend.index
+        self.index = Column("index", self._data_backend.index, dtype=Int64)
         self.loc = DataStore._LocIndexer[T](self)
         self.iloc = DataStore._ILocIndexer[T](self)
 

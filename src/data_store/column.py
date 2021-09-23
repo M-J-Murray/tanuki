@@ -96,7 +96,7 @@ class Column(Generic[T]):
         return DataType(dtype)
 
     def _validate_column(self: Column[T]) -> None:
-        if isinstance(self.dtype, TypeAlias):
+        if self._data_backend.is_link() or isinstance(self.dtype, TypeAlias):
             return
         data_type = self.infer_dtype(self.name, self._data_backend)
         if self.dtype != data_type:

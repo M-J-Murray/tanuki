@@ -69,10 +69,10 @@ class DatabaseBackend(Generic[T], DataBackend):
 
     @property
     def values(self) -> np.ndarray:
-        df = self.to_pandas()
         if self._selected_columns == ["index"]:
-            df = df.index
-        return df.values
+            return np.arange(0, len(self))
+        else:
+            return self.to_pandas().values
 
     @property
     def columns(self) -> list[str]:

@@ -99,10 +99,11 @@ class Sqlite3Adapter(DatabaseAdapter):
             )
             data_rows = cursor.fetchall()
             indices = set(item[1] for item in data_rows)
-            if index.name not in indices:
+            index_name = f"{data_token.table_name}_{index.name}"
+            if index_name not in indices:
                 return False
             cursor = self._connection.execute(
-                f"PRAGMA {data_token.data_group}.index_xinfo({data_token.table_name}_{index.name});"
+                f"PRAGMA {data_token.data_group}.index_xinfo({index_name});"
             )
             data_rows = cursor.fetchall()
             cols = set(item[2] for item in data_rows)

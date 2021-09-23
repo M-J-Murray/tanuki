@@ -59,7 +59,7 @@ class TestDatabaseBackend:
     def test_columns(self) -> None:
         assert_that(
             [str(col) for col in self.db_store.columns],
-            equal_to(["index", "a", "b", "c"]),
+            equal_to(["a", "b", "c"]),
         )
 
     def test_values(self) -> None:
@@ -76,7 +76,7 @@ class TestDatabaseBackend:
     def test_dtypes(self) -> None:
         assert_that(
             self.db_store.dtypes,
-            equal_to({"index": Int64, "a": String, "b": Int64, "c": Boolean}),
+            equal_to({"a": String, "b": Int64, "c": Boolean}),
         )
 
     def test_cast_columns(self) -> None:
@@ -102,8 +102,8 @@ class TestDatabaseBackend:
 
     def test_index_name(self) -> None:
         assert_that(self.db_store.index.name, equal_to("index"))
-        self.db_store.set_index("a")
-        assert_that(self.db_store.index.name, equal_to("a"))
+        self.db_store.set_index(ExampleStore.a_index)
+        assert_that(self.db_store.index.name, equal_to("a_index"))
 
     def test_set_index(self) -> None:
         raise NotImplementedError()
