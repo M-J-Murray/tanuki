@@ -7,7 +7,7 @@ from typing import Any, Type, TypeVar
 from src.data_store.column import Column
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Bytes
-from src.data_store.index import Index
+from src.data_store.index.index import Index
 from src.database.data_token import DataToken
 
 T = TypeVar("T", bound=DataStore)

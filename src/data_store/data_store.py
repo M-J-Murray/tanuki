@@ -21,16 +21,17 @@ from src.data_backend.data_backend import DataBackend
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
-from src.data_store.data_type import Boolean, DataType, Int64, String, TypeAlias
+from src.data_store.data_type import Boolean, DataType, String, TypeAlias
+from src.data_store.index.index import Index
+from src.data_store.index.index_alias import IndexAlias
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
-from .index import Index
-from .index_alias import IndexAlias
 from .storable_type_factory import StorableTypeFactory
 
 B = TypeVar("B", bound=DataBackend)
 T = TypeVar("T", bound="DataStore")
+
 
 class DataStore:
     # Class vars
@@ -86,7 +87,7 @@ class DataStore:
         self._all_columns = self._parse_columns()
         self._active_columns = self._parse_active_columns()
         self.columns = list(self._active_columns.values())
-        self.index = Column("index", self._data_backend.index, dtype=Int64)
+        self.index = self._data_backend.index
         self.loc = DataStore._LocIndexer[T](self)
         self.iloc = DataStore._ILocIndexer[T](self)
 
@@ -97,7 +98,8 @@ class DataStore:
         from src.data_backend.database_backend import DatabaseBackend
 
         return cls.from_backend(
-            DatabaseBackend[T](cls, database, data_token, read_only=read_only), validate=False
+            DatabaseBackend[T](cls, database, data_token, read_only=read_only),
+            validate=False,
         )
 
     @classmethod
@@ -212,8 +214,8 @@ class DataStore:
             if not has_columns:
                 setattr(self, name, None)
             else:
-                data = self._data_backend.getitems(col_names)
-                setattr(self, name, alias(name, data))
+                index = self._data_backend.get_index(alias)
+                setattr(self, name, index)
 
     def __contains__(self: T, key):
         return str(key) in self._all_columns
@@ -280,7 +282,6 @@ class DataStore:
 
     def iterrows(self: T) -> Generator[tuple[int, T], None, None]:
         for i, row in self._data_backend.iterrows():
-            row.index.name = self._data_backend.index.name
             yield (i, self.from_backend(row))
 
     def itertuples(self: T, ignore_index: bool = False) -> Generator[tuple]:
@@ -344,8 +345,7 @@ class DataStore:
             )
 
     def set_index(self: T, index: Union[Index, IndexAlias]) -> T:
-        col_names = [str(col) for col in index.columns]
-        return self.from_backend(self._data_backend.set_index(col_names))
+        return self.from_backend(self._data_backend.set_index(index))
 
     def reset_index(self: T, drop: bool = False) -> T:
         return self.from_backend(self._data_backend.reset_index(drop=drop))
@@ -358,9 +358,7 @@ class DataStore:
         )
 
     def drop(self: T, indices: list[int]) -> T:
-        return self.from_backend(
-            self._data_backend.drop_indices(indices)
-        )
+        return self.from_backend(self._data_backend.drop_indices(indices))
 
     @classmethod
     def concat(cls: T, all_data_stores: list[T], ignore_index: bool = False) -> T:

@@ -59,7 +59,7 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractproperty
-    def index(self) -> B:
+    def index(self) -> Index:
         raise NotImplementedError()
 
     @abstractproperty
@@ -139,7 +139,11 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def set_index(self: B, columns: tuple[str, ...]) -> B:
+    def get_index(self, index_alias: IndexAlias) -> Index:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def set_index(self: B, index: Union[Index, IndexAlias]) -> B:
         raise NotImplementedError()
 
     @abstractmethod
@@ -170,4 +174,6 @@ class DataBackend:
     def __repr__(self: B) -> str:
         raise NotImplementedError()
 
+from src.data_store.index.index import Index
+from src.data_store.index.index_alias import IndexAlias
 from src.data_store.query import Query

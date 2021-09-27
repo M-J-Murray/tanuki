@@ -51,6 +51,7 @@ class Column(Generic[T]):
             if issubclass(type(data), DataBackend):
                 self._data_backend = data
             else:
+                from src.data_backend.pandas_backend import PandasBackend
                 self._data_backend = PandasBackend({name: data}, index=index)
             self.dtype = (
                 self.infer_dtype(self.name, self._data_backend)
@@ -58,6 +59,7 @@ class Column(Generic[T]):
                 else DataType(dtype)
             )
         else:
+            from src.data_backend.pandas_backend import PandasBackend
             self._data_backend = PandasBackend(index=index)
             self.dtype = Object
 
@@ -81,7 +83,7 @@ class Column(Generic[T]):
         return GenericAlias(type(data), nested_type)
 
     @staticmethod
-    def infer_dtype(column_name: str, data_backend: PandasBackend) -> DataType:
+    def infer_dtype(column_name: str, data_backend: DataBackend) -> DataType:
         dtype: type = data_backend.dtypes[column_name]
         if dtype == Object:
             if len(data_backend) == 0:
@@ -231,4 +233,4 @@ class Column(Generic[T]):
 
 
 from src.data_backend.data_backend import DataBackend
-from src.data_backend.pandas_backend import PandasBackend
+

@@ -11,7 +11,7 @@ from src.data_store.column import Column
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_store import DataStore
 from src.data_store.data_type import Boolean, Int64, String
-from src.data_store.index import Index
+from src.data_store.index.index import Index
 
 
 class TestDataStore:
@@ -172,13 +172,13 @@ class TestDataStore:
         assert_that(self.test_store["index"].tolist(), equal_to([0, 1, 2]))
         assert_that(self.test_store.a_index.tolist(), equal_to(["a", "b", "c"]))
         assert_that(
-            self.test_store.ab_index.tolist(), equal_to([["a", 1], ["b", 2], ["c", 3]])
+            self.test_store.ab_index.tolist(), equal_to([("a", 1), ("b", 2), ("c", 3)])
         )
         test_slice = self.test_store.iloc[[0, 2]]
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))
         assert_that(test_slice["index"].tolist(), equal_to([0, 2]))
         assert_that(test_slice.a_index.tolist(), equal_to(["a", "c"]))
-        assert_that(test_slice.ab_index.tolist(), equal_to([["a", 1], ["c", 3]]))
+        assert_that(test_slice.ab_index.tolist(), equal_to([("a", 1), ("c", 3)]))
 
     def test_invalid_index_reference(self) -> None:
         try:

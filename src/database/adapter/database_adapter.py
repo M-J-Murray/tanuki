@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, Type, TypeVar
 
-from src.data_store.index import Index
+from src.data_store.index.index import Index
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
@@ -28,7 +28,9 @@ class DatabaseAdapter:
     def drop_group_table(self: DatabaseAdapter, data_token: DataToken) -> None:
         raise NotImplementedError()
 
-    def create_index(self: DatabaseAdapter, data_token: DataToken, index: Index) -> None:
+    def create_index(
+        self: DatabaseAdapter, data_token: DataToken, index: Index
+    ) -> None:
         raise NotImplementedError()
 
     def has_index(self: DatabaseAdapter, data_token: DataToken, index: Index) -> bool:
@@ -100,13 +102,9 @@ class DatabaseAdapter:
         alignment_columns: list[str],
     ) -> None:
         if data_store.is_link():
-            self._upsert_from_link(
-                data_token, data_store, alignment_columns
-            )
+            self._upsert_from_link(data_token, data_store, alignment_columns)
         else:
-            self._upsert_from_values(
-                data_token, data_store, alignment_columns
-            )
+            self._upsert_from_values(data_token, data_store, alignment_columns)
 
     def _upsert_from_values(
         self: DatabaseAdapter,

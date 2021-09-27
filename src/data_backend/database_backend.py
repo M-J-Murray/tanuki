@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Iterable, Optional, Type, TypeVar, Union
+from typing import Any, Generic, Optional, Type, TypeVar, Union
 
 import numpy as np
-from pandas import Index
+from pandas import Index as PIndex
 from pandas.core.frame import DataFrame
 
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.data_store import DataStore
+from src.data_store.index.index import Index
+from src.data_store.index.index_alias import IndexAlias
+from src.data_store.index.pandas_index import PandasIndex
 from src.data_store.query import (
     EqualsQuery,
     GreaterEqualQuery,
@@ -34,6 +37,7 @@ class DatabaseBackend(Generic[T], DataBackend):
 
     _selected_columns: list[str]
 
+    _index: DatabaseIndex
     _loc: _LocIndexer
     _iloc: _ILocIndexer
 
@@ -42,6 +46,7 @@ class DatabaseBackend(Generic[T], DataBackend):
         store_class: Type[T],
         database: Database,
         data_token: DataToken,
+        index: Optional[DatabaseIndex] = None,
         selected_columns: Optional[list[str]] = None,
         read_only: bool = True,
     ) -> None:
@@ -55,6 +60,11 @@ class DatabaseBackend(Generic[T], DataBackend):
         else:
             self._selected_columns = selected_columns
 
+        if index is None:
+            pindex = PIndex(np.arange(0, len(self)), name="index")
+            self._index = PandasIndex(pindex, [])
+        else:
+            self._index = index
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
@@ -69,10 +79,7 @@ class DatabaseBackend(Generic[T], DataBackend):
 
     @property
     def values(self) -> np.ndarray:
-        if self._selected_columns == ["index"]:
-            return np.arange(0, len(self))
-        else:
-            return self.to_pandas().values
+        return self.to_pandas().values
 
     @property
     def columns(self) -> list[str]:
@@ -87,13 +94,7 @@ class DatabaseBackend(Generic[T], DataBackend):
 
     @property
     def index(self) -> Index:
-        return DatabaseBackend(
-            self._store_class,
-            self._database,
-            self._data_token,
-            ["index"],
-            self._read_only,
-        )
+        return self._index
 
     @property
     def loc(self: DatabaseBackend) -> LocIndexer[DatabaseBackend]:
@@ -107,22 +108,44 @@ class DatabaseBackend(Generic[T], DataBackend):
         raise NotImplementedError()
 
     def __eq__(self, other: Any) -> Query:
-        return MultiAndQuery(EqualsQuery, self._selected_columns, [other for _ in self._selected_columns])
+        return MultiAndQuery(
+            EqualsQuery, self._selected_columns, [other for _ in self._selected_columns]
+        )
 
     def __ne__(self, other: Any) -> Query:
-        return MultiAndQuery(NotEqualsQuery, self._selected_columns, [other for _ in self._selected_columns])
+        return MultiAndQuery(
+            NotEqualsQuery,
+            self._selected_columns,
+            [other for _ in self._selected_columns],
+        )
 
     def __gt__(self, other: Any) -> Query:
-        return MultiAndQuery(GreaterThanQuery, self._selected_columns, [other for _ in self._selected_columns])
+        return MultiAndQuery(
+            GreaterThanQuery,
+            self._selected_columns,
+            [other for _ in self._selected_columns],
+        )
 
     def __ge__(self, other: Any) -> Query:
-        return MultiAndQuery(GreaterEqualQuery, self._selected_columns, [other for _ in self._selected_columns])
+        return MultiAndQuery(
+            GreaterEqualQuery,
+            self._selected_columns,
+            [other for _ in self._selected_columns],
+        )
 
     def __lt__(self, other: Any) -> Query:
-        return MultiAndQuery(LessThanQuery, self._selected_columns, [other for _ in self._selected_columns])
+        return MultiAndQuery(
+            LessThanQuery,
+            self._selected_columns,
+            [other for _ in self._selected_columns],
+        )
 
     def __le__(self, other: Any) -> Query:
-        return MultiAndQuery(LessEqualQuery, self._selected_columns, [other for _ in self._selected_columns])
+        return MultiAndQuery(
+            LessEqualQuery,
+            self._selected_columns,
+            [other for _ in self._selected_columns],
+        )
 
     def __len__(self):
         return self._database.row_count(self._data_token)
@@ -141,8 +164,8 @@ class DatabaseBackend(Generic[T], DataBackend):
             self._store_class,
             self._database,
             self._data_token,
-            [item],
-            self._read_only,
+            selected_columns=[item],
+            read_only=self._read_only,
         )
 
     def getitems(self, items: list[str]) -> DatabaseBackend:
@@ -150,21 +173,25 @@ class DatabaseBackend(Generic[T], DataBackend):
             self._store_class,
             self._database,
             self._data_token,
-            items,
-            self._read_only,
+            selected_columns=items,
+            read_only=self._read_only,
         )
 
     def getmask(self, mask: list[bool]) -> DatabaseBackend:
         indices = np.where(mask)[0]
         return self.query(self.index == indices)
 
+    def get_index(self, index_alias: IndexAlias) -> Index:
+        cols = [str(col) for col in index_alias.columns]
+        return DatabaseIndex(index_alias.name, self.getitems(cols))
+
+    def set_index(self, index: Union[Index, IndexAlias]) -> PandasBackend:
+        self._index = self.get_index(index)
+
     def query(self, query: Optional[Query] = None) -> PandasBackend:
         return self._database.query(
             self._store_class, self._data_token, query, self._selected_columns
         )._data_backend
-
-    def __setitem__(self, item: str, value: Any) -> None:
-        raise NotImplementedError()
 
     def append(
         clt: DatabaseBackend, new_backend: DatabaseBackend, ignore_index: bool = False
@@ -204,3 +231,6 @@ class _LocIndexer(LocIndexer[DatabaseBackend]):
 
     def __getitem__(self, item: Union[Any, list, slice]) -> DatabaseBackend:
         return DatabaseBackend(self._data_backend._data.loc[item])
+
+
+from src.data_store.index.database_index import DatabaseIndex

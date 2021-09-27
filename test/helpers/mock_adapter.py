@@ -7,7 +7,7 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.data_store import DataStore
-from src.data_store.index import Index
+from src.data_store.index.index import Index
 from src.data_store.query import Query
 from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
@@ -49,21 +49,21 @@ class MockAdapter(DatabaseAdapter):
             if data_group == token.data_group:
                 del self.table_indices[token]
 
-
     def drop_group_table(self: MockAdapter, data_token: DataToken) -> None:
         del self.group_tables[data_token.data_group][data_token.table_name]
         if data_token in self.table_indices:
             del self.table_indices[data_token]
 
-    def create_index(
-        self: MockAdapter, data_token: DataToken, index: Index
-    ) -> None:
+    def create_index(self: MockAdapter, data_token: DataToken, index: Index) -> None:
         if data_token not in self.table_indices:
             self.table_indices[data_token] = []
         self.table_indices[data_token].append(index.name)
 
     def has_index(self: MockAdapter, data_token: DataToken, index: Index) -> bool:
-        return data_token in self.table_indices and index.name in self.table_indices[data_token]
+        return (
+            data_token in self.table_indices
+            and index.name in self.table_indices[data_token]
+        )
 
     def insert(
         self: MockAdapter,

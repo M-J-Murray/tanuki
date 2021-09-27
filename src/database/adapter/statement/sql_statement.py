@@ -24,7 +24,7 @@ class SqlStatement:
         return self
 
     def FROM(self: "SqlStatement", source: str) -> "SqlStatement":
-        self._commands.append(f"FROM {source}")
+        self._commands.append(f"FROM {str(source)}")
         return self
 
     def INSERT_INTO(
@@ -74,10 +74,18 @@ class SqlStatement:
         source_token: Union[str, DataToken],
         target_token: Union[str, DataToken],
         update_columns: list[str],
+        alignment_columns: list[str],
     ) -> "SqlStatement":
-        update_col_names = [str(col) for col in update_columns]
-        col_str = ", ".join([f"{col}={source_token}.{col}" for col in update_col_names])
-        self._commands.append(f"UPDATE {target_token} SET {col_str}")
+        cols = [str(col) for col in update_columns]
+        
+        cols_str = ",".join(cols)
+        table_cols = [f"{source_token}.{col}" for col in cols]
+        alignment_str = ",".join([f"{source_token}.{col}={target_token}.{col}" for col in alignment_columns])
+        sub_statement = SqlStatement().SELECT(*table_cols).FROM(source_token).WHERE(alignment_str).compile(append_colon=False)
+
+        self._commands.append(f"UPDATE {target_token} SET ({cols_str}) = ({sub_statement})")
+        sub_statement2 = SqlStatement().SELECT_ALL().FROM(source_token).WHERE(alignment_str).compile(append_colon=False)
+        self.WHERE(f"EXISTS({sub_statement2})")
         return self
 
     def UPDATE_FROM_VALUES(
@@ -89,6 +97,26 @@ class SqlStatement:
         col_names = [str(col) for col in columns]
         col_str = ", ".join([f"{col}={value}" for col, value in zip(col_names, values)])
         self._commands.append(f"UPDATE {target_token} SET {col_str}")
+        return self
+
+    def UPSERT_FROM_LINK(
+        self: "SqlStatement",
+        source_token: Union[str, DataToken],
+        target_token: Union[str, DataToken],
+        update_columns: list[str],
+        alignment_columns: list[str],
+    ) -> "SqlStatement":
+        cols = [str(col) for col in update_columns]
+        
+        cols_str = ",".join(cols)
+        table_cols = [f"{source_token}.{col}" for col in cols]
+        alignment_str = ",".join([f"{source_token}.{col}={target_token}.{col}" for col in alignment_columns])
+        sub_statement = SqlStatement().SELECT(*table_cols).FROM(source_token).WHERE(alignment_str).compile(append_colon=False)
+
+        self._commands.append(f"UPDATE {target_token} SET ({cols_str}) = ({sub_statement})")
+        sub_statement2 = SqlStatement().SELECT_ALL().FROM(source_token).WHERE(alignment_str).compile(append_colon=False)
+        self.WHERE(f"EXISTS({sub_statement2})")
+        self.UPDATE_CONFLICTS(alignment_columns, update_columns)
         return self
 
     def DELETE(self: "SqlStatement") -> "SqlStatement":
@@ -279,8 +307,11 @@ class SqlStatement:
         self._commands.append(f"ON CONFLICT ({unique_str}) DO UPDATE SET {col_str}")
         return self
 
-    def compile(self: "SqlStatement") -> str:
-        return " ".join(self._commands) + ";"
+    def compile(self: "SqlStatement", append_colon: bool = True) -> str:
+        result = " ".join(self._commands)
+        if append_colon:
+            result += ";"
+        return result
 
     def __str__(self: "SqlStatement") -> str:
         return self.compile()

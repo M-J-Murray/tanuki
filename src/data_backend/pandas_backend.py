@@ -4,7 +4,6 @@ from typing import Any, cast, Generator, Iterable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from pandas import Index
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
@@ -16,35 +15,34 @@ from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
 class PandasBackend(DataBackend):
     _data: DataFrame
+    _index: PandasIndex
     _loc: _LocIndexer
     _iloc: _ILocIndexer
 
     def __init__(
         self,
         data: Optional[Union(Series, DataFrame, dict[str, list])] = None,
-        index: Optional[Union[Iterable]] = None,
+        index: Optional[PandasIndex] = None,
     ) -> None:
         if data is None:
-            self._data = DataFrame(dtype="object")
-            self._data.index.rename("index", inplace=True)
+            self._data = DataFrame(dtype="object", index=index)
         elif type(data) is Series:
             self._data = cast(Series, data).to_frame().transpose()
-            self._data.index.rename("index", inplace=True)
         elif type(data) is DataFrame:
             self._data = DataFrame(data)
         elif type(data) is dict:
             sample_value = next(iter(data.values()))
             if not isinstance(sample_value, Iterable) or isinstance(sample_value, str):
-                if index is None:
-                    index = 0
-                data["index"] = index
                 self._data = Series(data).to_frame().transpose()
-                self._data.set_index("index", inplace=True)
             else:
                 self._data = DataFrame(data, index=index)
-                self._data.index.rename("index", inplace=True)
         else:
             raise ValueError(f"Received unexpected value type {type(data)}: {data}")
+        if index is None:
+            self._data.index.name = "index"
+            self._index = PandasIndex(self._data.index, [])
+        else:
+            self._index = index
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
 
@@ -84,7 +82,7 @@ class PandasBackend(DataBackend):
 
     @property
     def index(self) -> Index:
-        return self._data.index
+        return self._index
 
     @property
     def index_name(self) -> Union[str, list[str]]:
@@ -169,11 +167,24 @@ class PandasBackend(DataBackend):
             value = value._data
         self._data[items] = value
 
-    def set_index(self, columns: tuple[str, ...]) -> PandasBackend:
-        return PandasBackend(self._data.set_index(columns))
+    def get_index(self, index_alias: IndexAlias) -> Index:
+        cols = [str(col) for col in index_alias.columns]
+        new_data = self._data.set_index(cols)
+        new_data.index.name = index_alias.name
+        return PandasIndex(new_data.index, cols)
+
+    def set_index(self, index: Union[Index, IndexAlias]) -> PandasBackend:
+        cols = [str(col) for col in index.columns]
+        new_data = self._data.set_index(cols)
+        new_data.index.name = index.name
+        new_index = PandasIndex(new_data.index, [])
+        return PandasBackend(new_data, new_index)
 
     def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
-        return PandasBackend(self._data.reset_index(drop=drop))
+        new_data = self._data.reset_index(drop=drop)
+        new_data.index.name = "index"
+        new_index = PandasIndex(new_data.index, [])
+        return PandasBackend(new_data, new_index)
 
     def append(
         self: PandasBackend, new_backend: PandasBackend, ignore_index: bool
@@ -210,9 +221,12 @@ class _ILocIndexer(ILocIndexer[PandasBackend]):
     def __init__(self, data_backend: PandasBackend) -> None:
         self._data_backend = data_backend
 
-    def __getitem__(self, item: Union[int, list, slice]) -> PandasBackend:
+    def __getitem__(self, item: Union[int, list, slice, Index]) -> PandasBackend:
+        if isinstance(item, Index):
+            item = item.tolist()
         if not isinstance(item, Iterable) or isinstance(item, str):
             item = [item]
+
         result = self._data_backend._data.iloc[item]
         return PandasBackend(result)
 
@@ -230,4 +244,7 @@ class _LocIndexer(LocIndexer[PandasBackend]):
         return PandasBackend(result)
 
 
+from src.data_store.index.index import Index
+from src.data_store.index.index_alias import IndexAlias
+from src.data_store.index.pandas_index import PandasIndex
 from src.data_store.query import Query

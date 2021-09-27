@@ -3,16 +3,13 @@ import shutil
 import tempfile
 from test.helpers.example_store import ExampleStore
 from test.helpers.sqlite3_container import Sqlite3Container
-from typing import Any
 
 from hamcrest import assert_that, equal_to, is_
 import numpy as np
 from pytest import fail
 
-from src.data_store.column import Column
-from src.data_store.data_store import DataStore
 from src.data_store.data_type import Boolean, Int64, String
-from src.database.data_token import DataToken
+from src.data_store.index.database_index import DatabaseIndex
 from src.database.sqlite3_database import Sqlite3Database
 
 
@@ -97,7 +94,7 @@ class TestDatabaseBackend:
     def test_index(self) -> None:
         expected = np.array([0, 1, 2])
         index = self.db_store.index
-        assert_that(isinstance(index, Column), equal_to(True))
+        assert_that(isinstance(index, DatabaseIndex), equal_to(True))
         assert_that(np.array_equal(index.values, expected), equal_to(True))
 
     def test_index_name(self) -> None:
