@@ -10,6 +10,7 @@ from test.helpers.expected_reference_tables import (
 from test.helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
+from pytest import fail
 
 from src.data_store.data_type import Boolean, Int64, String
 from src.database.data_token import DataToken
@@ -83,6 +84,7 @@ class TestDatabaseRegistrar:
         assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(True))
         assert_that(self.registrar.has_table(def_token), equal_to(True))
 
+
     def test_drop_table(self) -> None:
         assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
         assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
@@ -105,6 +107,8 @@ class TestDatabaseRegistrar:
         def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
         assert_that(self.registrar.has_table(def_token), equal_to(False))
 
+        fail("Test indices")
+
     def test_drop_group(self) -> None:
         assert_that(self.registrar.has_group(RAW_GROUP), equal_to(False))
         assert_that(self.registrar.has_table(ExampleStore.data_token), equal_to(False))
@@ -126,6 +130,8 @@ class TestDatabaseRegistrar:
         assert_that(self.registrar._has_store_type("ExampleStore", 1), equal_to(False))
         def_token = DataToken("ExampleStore_v1_definition", PROTECTED_GROUP)
         assert_that(self.registrar.has_table(def_token), equal_to(False))
+
+        fail("Test indices")
 
     def test_has_group(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
@@ -289,3 +295,7 @@ class TestDatabaseRegistrar:
         for actual, expected in zip(store_class.columns, ExampleStore.columns):
             assert_that(actual.name, equal_to(expected.name))
             assert_that(actual.dtype, equal_to(expected.dtype))
+
+    def test_has_indices(self) -> None:
+        fail("Not Implemented")
+    

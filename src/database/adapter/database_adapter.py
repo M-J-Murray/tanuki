@@ -8,6 +8,13 @@ from src.database.data_token import DataToken
 
 
 class DatabaseAdapter:
+
+    def __enter__(self):
+        raise NotImplementedError()
+
+    def __exit__(self, etype, value, traceback):
+        raise NotImplementedError()
+
     def has_group(self: DatabaseAdapter, data_group: str) -> bool:
         raise NotImplementedError()
 

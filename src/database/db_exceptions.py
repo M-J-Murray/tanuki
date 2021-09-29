@@ -3,6 +3,22 @@ from __future__ import annotations
 from src.database.data_token import DataToken
 
 
+class DatabaseAdapterUsageError(IOError):
+    def __init__(self: DatabaseAdapterUsageError, method: str) -> None:
+        super(DatabaseAdapterUsageError, self).__init__(
+            f"Data adapter wasn't opened before method call: '{method}'\nUse 'with adapter:'"
+        )
+
+
+class DatabaseAdapterError(IOError):
+    def __init__(
+        self: DatabaseAdapterError, reason: str, *exception: Exception
+    ) -> None:
+        super(DatabaseAdapterError, self).__init__(
+            f"Database command failed, rolling back: {reason}\n", *exception
+        )
+
+
 class DatabaseCorruptionError(IOError):
     def __init__(
         self: DatabaseCorruptionError, reason: str, *exception: Exception

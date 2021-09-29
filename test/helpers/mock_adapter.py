@@ -24,6 +24,12 @@ class MockAdapter(DatabaseAdapter):
         self.group_tables = {}
         self.table_indices = {}
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, etype, value, traceback):
+        pass
+
     def has_group(self: MockAdapter, data_group: str) -> bool:
         return data_group in self.group_tables
 

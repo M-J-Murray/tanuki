@@ -25,7 +25,7 @@ class PandasBackend(DataBackend):
         index: Optional[PandasIndex] = None,
     ) -> None:
         if data is None:
-            self._data = DataFrame(dtype="object", index=index)
+            self._data = DataFrame(dtype="object")
         elif type(data) is Series:
             self._data = cast(Series, data).to_frame().transpose()
         elif type(data) is DataFrame:
@@ -35,13 +35,16 @@ class PandasBackend(DataBackend):
             if not isinstance(sample_value, Iterable) or isinstance(sample_value, str):
                 self._data = Series(data).to_frame().transpose()
             else:
-                self._data = DataFrame(data, index=index)
+                self._data = DataFrame(data)
         else:
             raise ValueError(f"Received unexpected value type {type(data)}: {data}")
         if index is None:
             self._data.index.name = "index"
             self._index = PandasIndex(self._data.index, [])
         else:
+            if not isinstance(index, PandasIndex):
+                index = PandasIndex(index)
+            self._data.index = index._data
             self._index = index
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
@@ -96,11 +99,10 @@ class PandasBackend(DataBackend):
     def iloc(self: PandasBackend) -> ILocIndexer[PandasBackend]:
         return self._iloc
 
-    def equals(self, other) -> bool:
+    def equals(self, other: PandasBackend) -> bool:
         if type(other) is not PandasBackend:
             return False
-        oc = cast(PandasBackend, other)
-        return np.array_equal(self._data.values, oc._data.values)
+        return np.array_equal(self._data.values, other._data.values) and self._index.equals(other._index)
 
     def __eq__(self, other) -> DataFrame:
         if issubclass(type(other), PandasBackend):
@@ -177,7 +179,7 @@ class PandasBackend(DataBackend):
         cols = [str(col) for col in index.columns]
         new_data = self._data.set_index(cols)
         new_data.index.name = index.name
-        new_index = PandasIndex(new_data.index, [])
+        new_index = PandasIndex(new_data.index, cols)
         return PandasBackend(new_data, new_index)
 
     def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
@@ -187,7 +189,7 @@ class PandasBackend(DataBackend):
         return PandasBackend(new_data, new_index)
 
     def append(
-        self: PandasBackend, new_backend: PandasBackend, ignore_index: bool
+        self: PandasBackend, new_backend: PandasBackend, ignore_index: bool = False,
     ) -> PandasBackend:
         return PandasBackend(
             self._data.append(new_backend._data, ignore_index=ignore_index)
