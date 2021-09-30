@@ -22,8 +22,8 @@ class TestDataStore:
         cls.test_store = ExampleStore(
             a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]
         )
-        cls.test_row0 = ExampleStore(a="a", b=1, c=True)
-        cls.test_row2 = ExampleStore(a="c", b=3, c=True)
+        cls.test_row0 = ExampleStore(a="a", b=1, c=True, index=0)
+        cls.test_row2 = ExampleStore(a="c", b=3, c=True, index=2)
 
     def test_get_column_by_name(self) -> None:
         assert_that(self.test_store.a.tolist(), equal_to(["a", "b", "c"]))

@@ -17,8 +17,8 @@ class TestPandasBackend:
         cls.test_frame = PandasBackend(
             DataFrame({"a": ["a", "b", "c"], "b": [1, 2, 3], "c": [True, False, True]})
         )
-        cls.test_series0 = PandasBackend(Series({"a": "a", "b": 1, "c": True}))
-        cls.test_series2 = PandasBackend(Series({"a": "c", "b": 3, "c": True}))
+        cls.test_series0 = PandasBackend(Series({"a": "a", "b": 1, "c": True}), index=[0])
+        cls.test_series2 = PandasBackend(Series({"a": "c", "b": 3, "c": True}), index=[2])
 
     def test_iloc(self) -> None:
         actual_series = self.test_frame.iloc[0]

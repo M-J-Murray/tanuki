@@ -58,7 +58,7 @@ class TestSqlite3Adapter:
             except Exception:
                 pass
 
-            # assert_that(self.db_adapter.has_group(token.data_group), equal_to(False))
+            assert_that(self.db_adapter.has_group(token.data_group), equal_to(False))
             assert_that(self.db_adapter.has_group_table(token), equal_to(False))
 
     def test_create_group_table(self) -> None:
@@ -129,6 +129,11 @@ class TestSqlite3Adapter:
             assert_that(self.db_adapter.has_group(token.data_group), equal_to(True))
             assert_that(self.db_adapter.has_group_table(token), equal_to(True))
 
+        with self.db_adapter:
+            assert_that(self.db_adapter.has_group(token.data_group), equal_to(True))
+            assert_that(self.db_adapter.has_group_table(token), equal_to(True))
+
+        with self.db_adapter:
             self.db_adapter.drop_group(token.data_group)
 
             assert_that(self.db_adapter.has_group(token.data_group), equal_to(False))

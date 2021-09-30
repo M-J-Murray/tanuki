@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypeVar, Union
+from typing import Iterable, TypeVar, Union
 
 from pandas import Index as PIndex
 
@@ -15,6 +15,8 @@ class PandasIndex(Index[C]):
     _columns: list[str]
 
     def __init__(self, data: PIndex = PIndex([]), columns: list[str] = []) -> None:
+        if not isinstance(data, Iterable) or isinstance(data, str):
+            data = [data]
         if not isinstance(data, PIndex):
             data = PIndex(data, name="index")
         self._data = data
