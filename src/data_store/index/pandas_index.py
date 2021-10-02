@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, TypeVar, Union
 
+import numpy as np
 from pandas import Index as PIndex
 
 from src.data_store.column_alias import ColumnAlias
@@ -9,6 +10,7 @@ from src.data_store.column_alias import ColumnAlias
 from .index import Index
 
 C = TypeVar("C", bound=tuple[ColumnAlias, ...])
+
 
 class PandasIndex(Index[C]):
     _data: PIndex
@@ -32,6 +34,10 @@ class PandasIndex(Index[C]):
 
     def __getitem__(self, item) -> Index[C]:
         return PandasIndex(self._data[item], self._columns)
+
+    @property
+    def values(self) -> np.ndarray:
+        return self._data.values
 
     def tolist(self) -> list:
         return self._data.values.tolist()

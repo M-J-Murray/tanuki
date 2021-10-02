@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import numpy as np
 
@@ -32,8 +32,47 @@ class DatabaseIndex(Index[C]):
         index_data = np.array(self.tolist())
         return PandasIndex(index_data[item], self.columns)
 
+    @property
+    def values(self) -> np.ndarray:
+        return self._data.values
+
     def tolist(self) -> list:
         return self._data.index.tolist()
+
+    def equals(self, other: DatabaseIndex) -> bool:
+        if type(other) is not DatabaseIndex:
+            return False
+        return np.array_equal(self._data.values, other._data.values)
+
+    def __eq__(self, other) -> DatabaseIndex:
+        if type(other) is not DatabaseIndex:
+            other = other._data
+        return self._data == other
+
+    def __ne__(self, other: Any) -> DatabaseIndex:
+        if type(other) is not DatabaseIndex:
+            other = other._data
+        return self._data != other
+
+    def __gt__(self, other: Any) -> DatabaseIndex:
+        if type(other) is not DatabaseIndex:
+            other = other._data
+        return self._data > other
+
+    def __ge__(self, other: Any) -> DatabaseIndex:
+        if type(other) is not DatabaseIndex:
+            other = other._data
+        return self._data >= other
+
+    def __lt__(self, other: Any) -> DatabaseIndex:
+        if type(other) is not DatabaseIndex:
+            other = other._data
+        return self._data < other
+
+    def __le__(self, other: Any) -> DatabaseIndex:
+        if type(other) is not DatabaseIndex:
+            other = other._data
+        return self._data <= other
 
     def __str__(self) -> str:
         result = f"Index {self.name}"

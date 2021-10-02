@@ -4,6 +4,7 @@ from pandas import DataFrame
 
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.query import (
+    AndGroupQuery,
     AndQuery,
     EqualsQuery,
     GreaterEqualQuery,
@@ -11,6 +12,7 @@ from src.data_store.query import (
     LessEqualQuery,
     LessThanQuery,
     NotEqualsQuery,
+    OrGroupQuery,
     OrQuery,
     RowCountQuery,
 )
@@ -64,5 +66,23 @@ class PandasQueryCompiler(QueryCompiler[DataFrame]):
     def AND(self: "PandasQueryCompiler", and_type: AndQuery) -> DataFrame:
         return self._get_value(and_type.a) & self._get_value(and_type.b)
 
+    def AND_GROUP(self: "PandasQueryCompiler", and_group_type: AndGroupQuery) -> DataFrame:
+        result = None
+        for item in and_group_type.items:
+            if result is None:
+                result = self._get_value(item)
+            else:
+                result = result & self._get_value(item)
+        return result
+
     def OR(self: "PandasQueryCompiler", or_type: OrQuery) -> DataFrame:
         return self._get_value(or_type.a) | self._get_value(or_type.b)
+
+    def OR_GROUP(self: "PandasQueryCompiler", and_group_type: OrGroupQuery) -> DataFrame:
+        result = None
+        for item in and_group_type.items:
+            if result is None:
+                result = self._get_value(item)
+            else:
+                result = result | self._get_value(item)
+        return result

@@ -4,6 +4,8 @@ from src.data_store.query import (
     EqualsQuery,
     GreaterEqualQuery,
     GreaterThanQuery,
+    AndGroupQuery,
+    OrGroupQuery,
     LessEqualQuery,
     LessThanQuery,
     NotEqualsQuery,
@@ -19,6 +21,8 @@ class SqlQueryCompiler(QueryCompiler[str]):
     quote: bool = False
 
     def try_quote(self, value: str) -> str:
+        if type(value) is bool:
+            value = int(value)
         if self.quote:
             return f"'{value}'"
         else:
@@ -51,5 +55,13 @@ class SqlQueryCompiler(QueryCompiler[str]):
     def AND(self: "SqlQueryCompiler", and_type: AndQuery) -> str:
         return f"({and_type.a} and {and_type.b})"
 
+    def AND_GROUP(self: "SqlQueryCompiler", query: AndGroupQuery) -> str:
+        combined = " and ".join(query.items)
+        return f"({combined})"
+
     def OR(self: "SqlQueryCompiler", or_type: OrQuery) -> str:
         return f"({or_type.a} or {or_type.b})"
+
+    def OR_GROUP(self: "SqlQueryCompiler", query: OrGroupQuery) -> str:
+        combined = " or ".join(query.items)
+        return f"({combined})"

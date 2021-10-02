@@ -33,7 +33,13 @@ class QueryCompiler(Generic[T]):
     def AND(self: "QueryCompiler", query: AndQuery) -> T:
         raise NotImplementedError()
 
+    def AND_GROUP(self: "QueryCompiler", query: AndGroupQuery) -> T:
+        raise NotImplementedError()
+
     def OR(self: "QueryCompiler", query: OrQuery) -> T:
+        raise NotImplementedError()
+
+    def OR_GROUP(self: "QueryCompiler", query: OrGroupQuery) -> T:
         raise NotImplementedError()
 
     def compile(self: "QueryCompiler", query: Union[Any, Query]) -> T:
@@ -43,6 +49,7 @@ class QueryCompiler(Generic[T]):
 
 
 from src.data_store.query import (
+    AndGroupQuery,
     AndQuery,
     EqualsQuery,
     GreaterEqualQuery,
@@ -50,6 +57,7 @@ from src.data_store.query import (
     LessEqualQuery,
     LessThanQuery,
     NotEqualsQuery,
+    OrGroupQuery,
     OrQuery,
     Query,
     RowCountQuery,

@@ -25,7 +25,6 @@ class ILocIndexer(Generic[B]):
 
 
 class DataBackend:
-    
     @abstractmethod
     def is_link(self: B) -> bool:
         raise NotImplementedError()
@@ -33,7 +32,7 @@ class DataBackend:
     @abstractmethod
     def link_token(self: B) -> Optional[DataToken]:
         raise NotImplementedError()
-    
+
     @abstractmethod
     def to_pandas(self) -> DataFrame:
         raise NotImplementedError()
@@ -147,7 +146,7 @@ class DataBackend:
         raise NotImplementedError()
 
     @abstractmethod
-    def reset_index(self: B, drop: bool = False) -> B:
+    def reset_index(self: B) -> B:
         raise NotImplementedError()
 
     @abstractmethod
@@ -156,7 +155,7 @@ class DataBackend:
 
     @abstractmethod
     def drop_indices(self: B, indices: list[int]) -> B:
-        raise NotImplementedError()  
+        raise NotImplementedError()
 
     @abstractclassmethod
     def concat(cls: Type[B], all_backends: list[B], ignore_index: bool = False) -> B:
@@ -173,6 +172,7 @@ class DataBackend:
     @abstractmethod
     def __repr__(self: B) -> str:
         raise NotImplementedError()
+
 
 from src.data_store.index.index import Index
 from src.data_store.index.index_alias import IndexAlias

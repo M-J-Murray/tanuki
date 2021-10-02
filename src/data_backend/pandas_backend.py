@@ -38,6 +38,7 @@ class PandasBackend(DataBackend):
                 self._data = DataFrame(data)
         else:
             raise ValueError(f"Received unexpected value type {type(data)}: {data}")
+
         if index is None:
             self._data.index.name = "index"
             self._index = PandasIndex(self._data.index, [])
@@ -182,8 +183,8 @@ class PandasBackend(DataBackend):
         new_index = PandasIndex(new_data.index, cols)
         return PandasBackend(new_data, new_index)
 
-    def reset_index(self: PandasBackend, drop: bool = False) -> PandasBackend:
-        new_data = self._data.reset_index(drop=drop)
+    def reset_index(self: PandasBackend) -> PandasBackend:
+        new_data = self._data.reset_index()
         new_data.index.name = "index"
         new_index = PandasIndex(new_data.index, [])
         return PandasBackend(new_data, new_index)

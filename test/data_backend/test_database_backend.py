@@ -6,10 +6,16 @@ from test.helpers.sqlite3_container import Sqlite3Container
 
 from hamcrest import assert_that, equal_to, is_
 import numpy as np
+from pandas import DataFrame
+from pandas import Index as PIndex
+from pandas import Series
 from pytest import fail
 
+from src.data_backend.database_backend import DatabaseBackend
+from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.data_type import Boolean, Int64, String
 from src.data_store.index.database_index import DatabaseIndex
+from src.data_store.index.pandas_index import PandasIndex
 from src.database.sqlite3_database import Sqlite3Database
 
 
@@ -36,26 +42,32 @@ class TestDatabaseBackend:
         self.db = Sqlite3Database(conn_config)
         self.db.insert(ExampleStore.data_token, self.test_store)
         self.db_store = ExampleStore.link(self.db, ExampleStore.data_token)
-        queried = self.db_store.query()
-        assert_that(queried.equals(self.test_store), is_(True))
+        self.data_backend = self.db_store._data_backend
+
+        self.test_series0 = PandasBackend(
+            Series({"a": "a", "b": 1, "c": True}), index=[0]
+        )
+        self.test_series2 = PandasBackend(
+            Series({"a": "c", "b": 3, "c": True}), index=[2]
+        )
 
     def teardown_method(self) -> None:
         self.sql_db.reset()
 
     def test_is_link(self) -> None:
-        assert_that(self.db_store.is_link(), is_(True))
+        assert_that(self.data_backend.is_link(), is_(True))
 
     def test_link_token(self) -> None:
-        assert_that(self.db_store.link_token(), equal_to(ExampleStore.data_token))
+        assert_that(self.data_backend.link_token(), equal_to(ExampleStore.data_token))
 
     def test_to_pandas(self) -> None:
         assert_that(
-            self.db_store.to_pandas().equals(self.test_store.to_pandas()), is_(True)
+            self.data_backend.to_pandas().equals(self.test_store.to_pandas()), is_(True)
         )
 
     def test_columns(self) -> None:
         assert_that(
-            [str(col) for col in self.db_store.columns],
+            [str(col) for col in self.data_backend.columns],
             equal_to(["a", "b", "c"]),
         )
 
@@ -68,17 +80,17 @@ class TestDatabaseBackend:
             ],
             dtype="object",
         )
-        assert_that(np.array_equal(self.db_store.values, expected), is_(True))
+        assert_that(np.array_equal(self.data_backend.values, expected), is_(True))
 
     def test_dtypes(self) -> None:
         assert_that(
-            self.db_store.dtypes,
+            self.data_backend.dtypes,
             equal_to({"a": String, "b": Int64, "c": Boolean}),
         )
 
     def test_cast_columns(self) -> None:
         try:
-            self.db_store._data_backend.cast_columns({"a": Int64})
+            self.data_backend.cast_columns({"a": Int64})
             fail("Expected exception")
         except Exception as e:
             assert_that(isinstance(e, NotImplementedError), is_(True))
@@ -89,90 +101,220 @@ class TestDatabaseBackend:
             "b": [1, 2, 3],
             "c": [True, False, True],
         }
-        assert_that(self.db_store.to_dict(), equal_to(expected))
+        assert_that(self.data_backend.to_dict(), equal_to(expected))
 
     def test_index(self) -> None:
-        expected = np.array([0, 1, 2])
-        index = self.db_store.index
-        assert_that(isinstance(index, DatabaseIndex), equal_to(True))
-        assert_that(np.array_equal(index.values, expected), equal_to(True))
+        initial_expected = np.array([0, 1, 2])
+        assert_that(self.data_backend.index.name, equal_to("index"))
+        assert_that(isinstance(self.data_backend.index, PandasIndex), equal_to(True))
+        assert_that(
+            np.array_equal(self.data_backend.index.values, initial_expected),
+            equal_to(True),
+        )
 
-    def test_index_name(self) -> None:
-        assert_that(self.db_store.index.name, equal_to("index"))
-        self.db_store.set_index(ExampleStore.a_index)
-        assert_that(self.db_store.index.name, equal_to("a_index"))
+        new_expected = np.array([["a"], ["b"], ["c"]])
+        new_store = self.data_backend.set_index(ExampleStore.a_index)
+        assert_that(new_store.index.name, equal_to("a_index"))
+        assert_that(isinstance(new_store.index, DatabaseIndex), equal_to(True))
+        assert_that(
+            np.array_equal(new_store.index.values, new_expected), equal_to(True)
+        )
 
-    def test_set_index(self) -> None:
-        raise NotImplementedError()
-
-    def test_reset_index(self) -> None:
-        raise NotImplementedError()
-
-    def test_loc(self) -> None:
-        raise NotImplementedError()
+        reset_store = new_store.reset_index()
+        assert_that(reset_store.index.name, equal_to("index"))
+        assert_that(isinstance(reset_store.index, PandasIndex), equal_to(True))
+        assert_that(
+            np.array_equal(reset_store.index.values, initial_expected), equal_to(True)
+        )
 
     def test_iloc(self) -> None:
-        raise NotImplementedError()
+        actual_series = self.data_backend.iloc[0]
+        assert_that(actual_series.equals(self.test_series0), is_(True))
+
+    def test_loc(self) -> None:
+        test_slice = self.data_backend.iloc[[0, 2]]
+        actual_series = test_slice.loc[2]
+        assert_that(actual_series.equals(self.test_series2), is_(True))
 
     def test_equals(self) -> None:
-        raise NotImplementedError()
+        test = DatabaseBackend(ExampleStore, self.db, ExampleStore.data_token)
+        assert_that(self.data_backend.equals(test), equal_to(True))
+
+        newBackend = self.data_backend[ExampleStore.a]
+        test = DatabaseBackend(ExampleStore, self.db, ExampleStore.data_token)
+        assert_that(newBackend.equals(test), equal_to(False))
+
+        test = DatabaseBackend(
+            ExampleStore, self.db, ExampleStore.data_token, None, ["a"]
+        )
+        assert_that(self.data_backend.equals(test[ExampleStore.a]), equal_to(False))
+
+        test = PandasBackend(
+            {"a": ["a", "b", "d"], "b": [1, 2, 3], "c": [True, False, True]}
+        )
+        assert_that(self.data_backend.equals(test), equal_to(False))
 
     def test_eq(self) -> None:
-        raise NotImplementedError()
+        expected = PandasBackend({"a": ["a"], "b": [1], "c": [True]})
+        query = self.data_backend["a"] == "a"
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
+
+        test = PandasBackend({"a": ["a", "c"], "b": [1, 3]})
+        expected = PandasBackend({"a": ["a", "c"], "b": [1, 3], "c": [True, True]})
+        query = self.data_backend == test
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
 
     def test_ne(self) -> None:
-        raise NotImplementedError()
+        expected = PandasBackend({"a": ["b", "c"], "b": [2, 3], "c": [False, True]})
+        query = self.data_backend["a"] != "a"
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
+
+        test = PandasBackend({"a": ["a", "b", "d"], "b": [2, 2, 3]})
+        expected = PandasBackend({"a": ["a", "c"], "b": [1, 3], "c": [True, True]})
+        query = self.data_backend != test
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
 
     def test_gt(self) -> None:
-        raise NotImplementedError()
+        expected = PandasBackend({"a": ["c"], "b": [3], "c": [True]})
+        query = self.data_backend["b"] > 2
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
+
+        test = PandasBackend({"b": [2]})
+        query = self.data_backend > test
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
 
     def test_ge(self) -> None:
-        raise NotImplementedError()
+        expected = PandasBackend({"a": ["b", "c"], "b": [2, 3], "c": [False, True]})
+        query = self.data_backend["b"] >= 2
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
+
+        test = PandasBackend({"b": [2]})
+        query = self.data_backend >= test
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
 
     def test_lt(self) -> None:
-        raise NotImplementedError()
+        expected = PandasBackend({"a": ["a"], "b": [1], "c": [True]})
+        query = self.data_backend["b"] < 2
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
+
+        test = PandasBackend({"b": [2]})
+        query = self.data_backend < test
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
 
     def test_le(self) -> None:
-        raise NotImplementedError()
+        expected = PandasBackend({"a": ["a", "b"], "b": [1, 2], "c": [True, False]})
+        query = self.data_backend["b"] <= 2
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
 
-    def test_len(self) -> int:
-        raise NotImplementedError()
+        test = PandasBackend({"b": [2]})
+        query = self.data_backend <= test
+        queried = self.data_backend.query(query)
+        assert_that(queried.equals(expected), equal_to(True))
+
+    def test_len(self) -> None:
+        assert_that(len(self.data_backend), equal_to(3))
 
     def test_iter(self) -> None:
-        raise NotImplementedError()
+        columns = ["a", "b", "c"]
+        for actual_col, expected_col in zip(self.data_backend, columns):
+            assert_that(actual_col, equal_to(expected_col))
 
-    def test_iterrows(self) -> None:
-        raise NotImplementedError()
+    def test_iterows(self) -> None:
+        for i, row in self.data_backend.iterrows():
+            iloc_row = self.data_backend.iloc[i]
+            assert_that(row.equals(iloc_row), is_(True))
 
     def test_itertuples(self) -> None:
-        raise NotImplementedError()
+        for i, a, b, c in self.data_backend.itertuples():
+            iloc_row = self.data_backend.iloc[i]
+            assert_that(a, equal_to(iloc_row["a"].values[0]))
+            assert_that(b, equal_to(iloc_row["b"].values[0]))
+            assert_that(c, equal_to(iloc_row["c"].values[0]))
 
     def test_getitem(self) -> None:
-        raise NotImplementedError()
+        expected = DatabaseBackend(ExampleStore, self.db, ExampleStore.data_token, selected_columns=["b"])
+        assert_that(self.data_backend["b"].equals(expected), equal_to(True))
 
     def test_getitems(self) -> None:
-        raise NotImplementedError()
+        expected = DatabaseBackend(ExampleStore, self.db, ExampleStore.data_token, selected_columns=["a", "b"])
+        assert_that(
+            self.data_backend.getitems(["a", "b"]).equals(expected), equal_to(True)
+        )
 
     def test_getmask(self) -> None:
-        raise NotImplementedError()
+        test = self.data_backend.getmask([True, False, True])
+        expected = PandasBackend(
+            {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
+            index=PandasIndex(PIndex([0, 2]), []),
+        )
+        repr(expected)
+        assert_that(test.equals(expected), equal_to(True))
 
     def test_query(self) -> None:
-        raise NotImplementedError()
+        query = (ExampleStore.a == "a") | (ExampleStore.b == 3)
+        test = self.data_backend.query(query)
+        expected = PandasBackend(
+            {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
+            index=PandasIndex(PIndex([0, 2]), []),
+        )
+        assert_that(test.equals(expected), equal_to(True))
 
     def test_setitem(self) -> None:
-        raise NotImplementedError()
+        self.data_backend["a"] = ["d", "e", "f"]
+        expected = PandasBackend(
+            {"a": ["d", "e", "f"], "b": [1, 2, 3], "c": [True, False, True]}
+        )
+        assert_that(self.data_backend.equals(expected), equal_to(True))
 
     def test_append(self) -> None:
-        raise NotImplementedError()
+        postfix = PandasBackend({"a": ["d"], "b": [4], "c": [False]})
+        new_frame = self.data_backend.append(postfix, ignore_index=True)
+        expected = PandasBackend(
+            {
+                "a": ["a", "b", "c", "d"],
+                "b": [1, 2, 3, 4],
+                "c": [True, False, True, False],
+            }
+        )
+        assert_that(new_frame.equals(expected), equal_to(True))
 
     def test_drop_indices(self) -> None:
-        raise NotImplementedError()
+        new_frame = self.data_backend.drop_indices([1])
+        expected = PandasBackend(
+            {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
+            index=PandasIndex(PIndex([0, 2]), []),
+        )
+        assert_that(new_frame.equals(expected), equal_to(True))
 
     def test_concat(self) -> None:
-        raise NotImplementedError()
+        postfix = PandasBackend({"a": ["d"], "b": [4], "c": [False]})
+        new_frame = PandasBackend.concat(
+            [self.data_backend, postfix], ignore_index=True
+        )
+        expected = PandasBackend(
+            {
+                "a": ["a", "b", "c", "d"],
+                "b": [1, 2, 3, 4],
+                "c": [True, False, True, False],
+            }
+        )
+        assert_that(new_frame.equals(expected), equal_to(True))
 
     def test_str(self) -> None:
-        raise NotImplementedError()
+        expected = "Database Link: raw.test\nActive Columns: ['a', 'b', 'c']"
+        assert_that(str(self.data_backend), equal_to(expected))
 
     def test_repr(self) -> None:
-        raise NotImplementedError()
+        expected = "Database Link: raw.test\nActive Columns: ['a', 'b', 'c']"
+        assert_that(repr(self.data_backend), equal_to(expected))

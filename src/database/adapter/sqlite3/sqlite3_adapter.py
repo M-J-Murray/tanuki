@@ -7,7 +7,7 @@ from typing import Optional, TypeVar
 
 from src.data_store.data_store import DataStore
 from src.data_store.index.index import Index
-from src.data_store.query import EqualsQuery, MultiAndQuery, Query
+from src.data_store.query import AndGroupQuery, EqualsQuery, ColumnQuery, Query
 from src.database.adapter.database_adapter import DatabaseAdapter
 from src.database.adapter.database_schema import DatabaseSchema
 from src.database.adapter.query.sql_query_compiler import SqlQueryCompiler
@@ -281,7 +281,7 @@ class Sqlite3Adapter(DatabaseAdapter):
             update_columns = list(set(all_columns) - set(alignment_columns))
             update_values = ["?" for _ in update_columns]
 
-            query = MultiAndQuery(EqualsQuery, alignment_columns, db_alignment_values)
+            query = ColumnQuery(EqualsQuery, AndGroupQuery, alignment_columns, db_alignment_values)
             compiler = SqlQueryCompiler(quote=False)
             query = compiler.compile(query)
             statement = (
@@ -402,7 +402,7 @@ class Sqlite3Adapter(DatabaseAdapter):
         try:
             statement = SqlStatement().SELECT().COUNT().FROM(data_token)
             cursor = self._connection.execute(statement.compile())
-            return cursor.fetchone()[0] > 0
+            return cursor.fetchone()[0]
         except Exception as e:
             self.rollback()
             raise DatabaseAdapterError("row_count failed", e)

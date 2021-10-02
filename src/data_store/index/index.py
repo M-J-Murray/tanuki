@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from abc import abstractmethod, abstractproperty
-from typing import Generic, TypeVar, Union
+from typing import Any, Generic, TypeVar, Union
+
+import numpy as np
 
 C = TypeVar("C", bound=tuple["ColumnAlias", ...])
 
@@ -19,8 +21,44 @@ class Index(Generic[C]):
     def __getitem__(self, item) -> Index[C]:
         raise NotImplementedError()
 
+    @abstractproperty
+    def values(self: Index[C]) -> np.ndarray:
+        raise NotImplementedError()
+
     @abstractmethod
     def tolist(self: Index[C]) -> list:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def equals(self, other: Any) -> bool:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __eq__(self, other: Any) -> Index[C]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __ne__(self, other: Any) -> Index[C]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __gt__(self, other: Any) -> Index[C]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __ge__(self, other: Any) -> Index[C]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __lt__(self, other: Any) -> Index[C]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __le__(self, other: Any) -> Index[C]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __len__(self) -> int:
         raise NotImplementedError()
 
     @abstractmethod

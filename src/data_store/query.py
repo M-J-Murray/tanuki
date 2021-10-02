@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Iterable, TypeVar, Union
+from pandas import DataFrame, Series
 
 T = TypeVar("T")
 
@@ -47,19 +48,69 @@ class Query:
         raise NotImplementedError()
 
 
-class MultiAndQuery(Query):
+class DataStoreQuery(Query):
     a: Query
 
-    def __init__(self, query_type: type[Query], a_items: list, b_items: list) -> None:
+    def __init__(
+        self,
+        query_type: type[Query],
+        column_join_type: type[Query],
+        row_join_type: type[Query],
+        dataframe: DataFrame,
+    ) -> None:
+        sub_queries = [RowQuery(query_type, column_join_type, row) for _, row in dataframe.iterrows()]
+        self.a = row_join_type(sub_queries)
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        return query_compiler.compile(self.a)
+
+    def __str__(self) -> str:
+        return str(self.a)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class RowQuery(Query):
+    a: Query
+
+    def __init__(
+        self, query_type: type[Query], join_type: type[Query], row: Series
+    ) -> None:
+        sub_queries = [query_type(col, value) for col, value in row.iteritems()]
+        self.a = join_type(sub_queries)
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        return query_compiler.compile(self.a)
+
+    def __str__(self) -> str:
+        return str(self.a)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class ColumnQuery(Query):
+    a: Query
+
+    def __init__(
+        self,
+        query_type: type[Query],
+        join_type: type[Query],
+        a_items: list,
+        b_items: list,
+    ) -> None:
         if len(a_items) != len(b_items):
-            raise RuntimeError("Cannot build multi query with items of different lengths")
+            raise RuntimeError(
+                "Cannot build multi query with items of different lengths"
+            )
         query: Query = None
         for a, b in zip(a_items, b_items):
             new_query = query_type(a, b)
             if query is None:
                 query = new_query
             else:
-                query = query and new_query
+                query = join_type(query, new_query)
         self.a = query
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
@@ -70,6 +121,7 @@ class MultiAndQuery(Query):
 
     def __repr__(self) -> str:
         return str(self)
+
 
 @dataclass
 class EqualsQuery(Query):
@@ -221,6 +273,22 @@ class AndQuery(Query):
 
 
 @dataclass
+class AndGroupQuery(Query):
+    items: list[Union[bool, Query]]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        compiled = [query_compiler.compile(item) for item in self.items]
+        return query_compiler.AND_GROUP(AndGroupQuery(compiled))
+
+    def __str__(self) -> str:
+        combined = " and ".join([str(item) for item in self.items])
+        return f"({combined})"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+@dataclass
 class OrQuery(Query):
     a: Union[bool, Query]
     b: Union[bool, Query]
@@ -232,6 +300,22 @@ class OrQuery(Query):
 
     def __str__(self) -> str:
         return f"({self.a}) or ({self.b})"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+@dataclass
+class OrGroupQuery(Query):
+    items: list[Union[bool, Query]]
+
+    def compile(self, query_compiler: QueryCompiler[T]) -> T:
+        compiled = [query_compiler.compile(item) for item in self.items]
+        return query_compiler.OR_GROUP(OrGroupQuery(compiled))
+
+    def __str__(self) -> str:
+        combined = " or ".join([str(item) for item in self.items])
+        return f"({combined})"
 
     def __repr__(self) -> str:
         return str(self)

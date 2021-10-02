@@ -12,13 +12,16 @@ from src.data_store.index.index import Index
 from src.data_store.index.index_alias import IndexAlias
 from src.data_store.index.pandas_index import PandasIndex
 from src.data_store.query import (
+    AndGroupQuery,
+    ColumnQuery,
+    DataStoreQuery,
     EqualsQuery,
     GreaterEqualQuery,
     GreaterThanQuery,
     LessEqualQuery,
     LessThanQuery,
-    MultiAndQuery,
     NotEqualsQuery,
+    OrGroupQuery,
     Query,
 )
 from src.database.data_token import DataToken
@@ -64,6 +67,10 @@ class DatabaseBackend(Generic[T], DataBackend):
             pindex = PIndex(np.arange(0, len(self)), name="index")
             self._index = PandasIndex(pindex, [])
         else:
+            if not isinstance(index, DatabaseIndex) and not isinstance(
+                index, PandasIndex
+            ):
+                index = PandasIndex(index)
             self._index = index
         self._loc = _LocIndexer(self)
         self._iloc = _ILocIndexer(self)
@@ -104,60 +111,89 @@ class DatabaseBackend(Generic[T], DataBackend):
     def iloc(self: DatabaseBackend) -> ILocIndexer[DatabaseBackend]:
         return self._iloc
 
-    def equals(self, other):
-        raise NotImplementedError()
+    def equals(self, other: DatabaseBackend):
+        if type(other) is not DatabaseBackend:
+            return False
+        return (
+            self._data_token == other._data_token
+            and self._store_class == other._store_class
+            and self._selected_columns == other._selected_columns
+        )
 
     def __eq__(self, other: Any) -> Query:
-        return MultiAndQuery(
-            EqualsQuery, self._selected_columns, [other for _ in self._selected_columns]
-        )
+        if type(other) is PandasBackend:
+            return DataStoreQuery(EqualsQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+        else:
+            return ColumnQuery(
+                EqualsQuery, AndGroupQuery, self._selected_columns, [other for _ in self._selected_columns]
+            )
 
     def __ne__(self, other: Any) -> Query:
-        return MultiAndQuery(
-            NotEqualsQuery,
-            self._selected_columns,
-            [other for _ in self._selected_columns],
-        )
+        if type(other) is PandasBackend:
+            return DataStoreQuery(NotEqualsQuery, OrGroupQuery, AndGroupQuery, other.to_pandas())
+        else:
+            return ColumnQuery(
+                NotEqualsQuery,
+                AndGroupQuery,
+                self._selected_columns,
+                [other for _ in self._selected_columns],
+            )
 
     def __gt__(self, other: Any) -> Query:
-        return MultiAndQuery(
-            GreaterThanQuery,
-            self._selected_columns,
-            [other for _ in self._selected_columns],
-        )
+        if type(other) is PandasBackend:
+            return DataStoreQuery(GreaterThanQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+        else:
+            return ColumnQuery(
+                GreaterThanQuery,
+                AndGroupQuery,
+                self._selected_columns,
+                [other for _ in self._selected_columns],
+            )
 
     def __ge__(self, other: Any) -> Query:
-        return MultiAndQuery(
-            GreaterEqualQuery,
-            self._selected_columns,
-            [other for _ in self._selected_columns],
-        )
+        if type(other) is PandasBackend:
+            return DataStoreQuery(GreaterEqualQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+        else:
+            return ColumnQuery(
+                GreaterEqualQuery,
+                AndGroupQuery,
+                self._selected_columns,
+                [other for _ in self._selected_columns],
+            )
 
     def __lt__(self, other: Any) -> Query:
-        return MultiAndQuery(
-            LessThanQuery,
-            self._selected_columns,
-            [other for _ in self._selected_columns],
-        )
+        if type(other) is PandasBackend:
+            return DataStoreQuery(LessThanQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+        else:
+            return ColumnQuery(
+                LessThanQuery,
+                AndGroupQuery,
+                self._selected_columns,
+                [other for _ in self._selected_columns],
+            )
 
     def __le__(self, other: Any) -> Query:
-        return MultiAndQuery(
-            LessEqualQuery,
-            self._selected_columns,
-            [other for _ in self._selected_columns],
-        )
+        if type(other) is PandasBackend:
+            return DataStoreQuery(LessEqualQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+        else:
+            return ColumnQuery(
+                LessEqualQuery,
+                AndGroupQuery,
+                self._selected_columns,
+                [other for _ in self._selected_columns],
+            )
 
     def __len__(self):
         return self._database.row_count(self._data_token)
 
     def __iter__(self):
-        raise NotImplementedError()
+        return iter(self._selected_columns)
 
     def iterrows(self):
-        raise NotImplementedError()
+        return self.query().iterrows()
 
     def itertuples(self):
-        raise NotImplementedError()
+        return self.query().itertuples()
 
     def __getitem__(self, item: str) -> Any:
         return DatabaseBackend(
@@ -186,7 +222,25 @@ class DatabaseBackend(Generic[T], DataBackend):
         return DatabaseIndex(index_alias.name, self.getitems(cols))
 
     def set_index(self, index: Union[Index, IndexAlias]) -> PandasBackend:
-        self._index = self.get_index(index)
+        return DatabaseBackend(
+            self._store_class,
+            self._database,
+            self._data_token,
+            index=self.get_index(index),
+            selected_columns=self._selected_columns,
+            read_only=self._read_only,
+        )
+
+    def reset_index(self) -> PandasBackend:
+        pindex = PIndex(np.arange(0, len(self)), name="index")
+        return DatabaseBackend(
+            self._store_class,
+            self._database,
+            self._data_token,
+            index=PandasIndex(pindex, []),
+            selected_columns=self._selected_columns,
+            read_only=self._read_only,
+        )
 
     def query(self, query: Optional[Query] = None) -> PandasBackend:
         return self._database.query(
@@ -220,7 +274,7 @@ class _ILocIndexer(ILocIndexer[DatabaseBackend]):
         self._data_backend = data_backend
 
     def __getitem__(self, item: Union[int, list, slice]) -> DatabaseBackend:
-        return DatabaseBackend(self._data_backend._data.iloc[item])
+        return self._data_backend.query().iloc[item]
 
 
 class _LocIndexer(LocIndexer[DatabaseBackend]):
@@ -230,7 +284,7 @@ class _LocIndexer(LocIndexer[DatabaseBackend]):
         self._data_backend = data_backend
 
     def __getitem__(self, item: Union[Any, list, slice]) -> DatabaseBackend:
-        return DatabaseBackend(self._data_backend._data.loc[item])
+        return self._data_backend.query().loc[item]
 
 
 from src.data_store.index.database_index import DatabaseIndex

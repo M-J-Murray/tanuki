@@ -347,8 +347,8 @@ class DataStore:
     def set_index(self: T, index: Union[Index, IndexAlias]) -> T:
         return self.from_backend(self._data_backend.set_index(index))
 
-    def reset_index(self: T, drop: bool = False) -> T:
-        return self.from_backend(self._data_backend.reset_index(drop=drop))
+    def reset_index(self: T) -> T:
+        return self.from_backend(self._data_backend.reset_index())
 
     def append(self: T, new_store: T, ignore_index: bool = False) -> T:
         return self.from_backend(
