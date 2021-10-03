@@ -100,18 +100,10 @@ class ColumnQuery(Query):
         a_items: list,
         b_items: list,
     ) -> None:
-        if len(a_items) != len(b_items):
-            raise RuntimeError(
-                "Cannot build multi query with items of different lengths"
-            )
-        query: Query = None
-        for a, b in zip(a_items, b_items):
-            new_query = query_type(a, b)
-            if query is None:
-                query = new_query
-            else:
-                query = join_type(query, new_query)
-        self.a = query
+        if not isinstance(b_items, Iterable) or isinstance(b_items, str):
+            b_items = [b_items for _ in range(len(a_items))]
+        sub_queries = [query_type(a, b) for a, b in zip(a_items, b_items) if b is not None]
+        self.a = join_type(sub_queries)
 
     def compile(self, query_compiler: QueryCompiler[T]) -> T:
         return query_compiler.compile(self.a)

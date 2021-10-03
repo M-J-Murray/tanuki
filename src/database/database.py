@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, cast, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, cast, Optional, Type, TypeVar, Union
 
 from src.data_store.column_alias import ColumnAlias
 from src.data_store.data_type import DataType
@@ -11,6 +11,11 @@ from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
 from .database_registrar import DatabaseRegistrar
 from .db_exceptions import MissingTableError
+
+if TYPE_CHECKING:
+    from src.data_store.data_store import DataStore
+
+T = TypeVar("T", bound="DataStore")
 
 class Database:
     _db_adapter: DatabaseAdapter
@@ -161,8 +166,3 @@ class Database:
 
     def stop(self) -> None:
         self._db_adapter.stop()
-
-
-from src.data_store.data_store import DataStore
-
-T = TypeVar("T", bound=DataStore)

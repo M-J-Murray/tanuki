@@ -248,13 +248,13 @@ class TestDataStore:
         test_slice = self.test_store.iloc[[0, 2]]
         assert_that(test_slice.index.tolist(), equal_to([0, 2]))
 
-        test_slice = test_slice.reset_index(drop=True)
+        test_slice = test_slice.reset_index()
         assert_that(test_slice.index.tolist(), equal_to([0, 1]))
 
         test_slice = self.test_store.set_index(ExampleStore.ab_index)
         assert_that(test_slice.index.tolist(), equal_to([("a", 1), ("b", 2), ("c", 3)]))
 
-        test_slice = test_slice.reset_index(drop=True)
+        test_slice = test_slice.reset_index()
         assert_that(test_slice.index.tolist(), equal_to([0, 1, 2]))
 
     def test_append(self) -> None:

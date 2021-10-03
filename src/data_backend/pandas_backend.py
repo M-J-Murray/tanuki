@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast, Generator, Iterable, Optional, Union
+from typing import Any, cast, Generator, Iterable, Optional, TYPE_CHECKING, Union
 
 import numpy as np
 import pandas as pd
@@ -8,9 +8,15 @@ from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
 from src.data_store.data_type import DataType
+from src.data_store.index.index import Index
+from src.data_store.index.pandas_index import PandasIndex
 from src.database.data_token import DataToken
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
+
+if TYPE_CHECKING:
+    from src.data_store.index.index_alias import IndexAlias
+    from src.data_store.query import Query
 
 
 class PandasBackend(DataBackend):
@@ -103,7 +109,9 @@ class PandasBackend(DataBackend):
     def equals(self, other: PandasBackend) -> bool:
         if type(other) is not PandasBackend:
             return False
-        return np.array_equal(self._data.values, other._data.values) and self._index.equals(other._index)
+        return np.array_equal(
+            self._data.values, other._data.values
+        ) and self._index.equals(other._index)
 
     def __eq__(self, other) -> DataFrame:
         if issubclass(type(other), PandasBackend):
@@ -150,7 +158,7 @@ class PandasBackend(DataBackend):
             yield values
 
     def __getitem__(self, item: str) -> Any:
-        return PandasBackend(self._data[[item]])
+        return PandasBackend(self._data[item].to_frame())
 
     def getitems(self, items: list[str]) -> PandasBackend:
         return PandasBackend(self._data[items])
@@ -184,13 +192,15 @@ class PandasBackend(DataBackend):
         return PandasBackend(new_data, new_index)
 
     def reset_index(self: PandasBackend) -> PandasBackend:
-        new_data = self._data.reset_index()
+        new_data = self._data.reset_index(drop=True)
         new_data.index.name = "index"
         new_index = PandasIndex(new_data.index, [])
         return PandasBackend(new_data, new_index)
 
     def append(
-        self: PandasBackend, new_backend: PandasBackend, ignore_index: bool = False,
+        self: PandasBackend,
+        new_backend: PandasBackend,
+        ignore_index: bool = False,
     ) -> PandasBackend:
         return PandasBackend(
             self._data.append(new_backend._data, ignore_index=ignore_index)
@@ -245,9 +255,3 @@ class _LocIndexer(LocIndexer[PandasBackend]):
             item = [item]
         result = self._data_backend._data.loc[item]
         return PandasBackend(result)
-
-
-from src.data_store.index.index import Index
-from src.data_store.index.index_alias import IndexAlias
-from src.data_store.index.pandas_index import PandasIndex
-from src.data_store.query import Query

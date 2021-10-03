@@ -1,3 +1,4 @@
+from os import name
 from test.helpers.example_store import ExampleStore
 
 from hamcrest import assert_that, equal_to, is_, is_in
@@ -131,11 +132,13 @@ class TestPandasBackend:
         assert_that(np.array_equal(actual.values, expected.values), equal_to(True))
 
     def test_index(self) -> None:
-        expected = PandasIndex(PIndex([0, 1, 2]), [])
+        expected = PandasIndex(PIndex([0, 1, 2], name="index"), [])
         assert_that(self.data_backend.index.equals(expected), equal_to(True))
 
         new_frame = self.data_backend.set_index(ExampleStore.ab_index)
-        expected = PandasIndex(PIndex([("a", 1), ("b", 2), ("c", 3)]), ["a", "b"])
+        pindex = PIndex([("a", 1), ("b", 2), ("c", 3)])
+        pindex.name = "ab_index"
+        expected = PandasIndex(pindex, ["a", "b"])
         assert_that(new_frame.index.equals(expected), equal_to(True))
 
     def test_index_name(self) -> None:
@@ -218,7 +221,7 @@ class TestPandasBackend:
         test = self.data_backend.getmask([True, False, True])
         expected = PandasBackend(
             {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
-            index=PandasIndex(PIndex([0, 2]), []),
+            index=PandasIndex(PIndex([0, 2], name="index"), []),
         )
         repr(expected)
         assert_that(test.equals(expected), equal_to(True))
@@ -228,7 +231,7 @@ class TestPandasBackend:
         test = self.data_backend.query(query)
         expected = PandasBackend(
             {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
-            index=PandasIndex(PIndex([0, 2]), []),
+            index=PandasIndex(PIndex([0, 2], name="index"), []),
         )
         assert_that(test.equals(expected), equal_to(True))
 
@@ -255,7 +258,7 @@ class TestPandasBackend:
         new_frame = self.data_backend.drop_indices([1])
         expected = PandasBackend(
             {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
-            index=PandasIndex(PIndex([0, 2]), []),
+            index=PandasIndex(PIndex([0, 2], name="index"), []),
         )
         assert_that(new_frame.equals(expected), equal_to(True))
 

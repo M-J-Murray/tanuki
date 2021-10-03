@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from abc import abstractmethod, abstractproperty
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, TYPE_CHECKING, TypeVar, Union
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from src.data_store.column_alias import ColumnAlias
+    from src.data_store.index.pandas_index import PandasIndex
+
+
 
 C = TypeVar("C", bound=tuple["ColumnAlias", ...])
 
@@ -15,6 +21,10 @@ class Index(Generic[C]):
 
     @abstractproperty
     def columns(self: Index[C]) -> list[str]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def to_pandas(self) -> PandasIndex[C]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -68,5 +78,3 @@ class Index(Generic[C]):
     @abstractmethod
     def __repr__(self: Index[C]) -> str:
         raise NotImplementedError()
-
-from src.data_store.column_alias import ColumnAlias

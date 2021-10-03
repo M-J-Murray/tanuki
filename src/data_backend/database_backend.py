@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Optional, Type, TypeVar, Union
+from typing import Any, Generic, Optional, Type, TYPE_CHECKING, TypeVar, Union
 
 import numpy as np
 from pandas import Index as PIndex
@@ -8,6 +8,7 @@ from pandas.core.frame import DataFrame
 
 from src.data_backend.pandas_backend import PandasBackend
 from src.data_store.data_store import DataStore
+from src.data_store.index.database_index import DatabaseIndex
 from src.data_store.index.index import Index
 from src.data_store.index.index_alias import IndexAlias
 from src.data_store.index.pandas_index import PandasIndex
@@ -29,7 +30,7 @@ from src.database.database import Database
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
-T = TypeVar("T", bound=DataStore)
+T = TypeVar("T", bound="DataStore")
 
 
 class DatabaseBackend(Generic[T], DataBackend):
@@ -53,6 +54,8 @@ class DatabaseBackend(Generic[T], DataBackend):
         selected_columns: Optional[list[str]] = None,
         read_only: bool = True,
     ) -> None:
+        if not read_only:
+            raise NotImplementedError("The current version of Tanuki does not support Store to DB writing")
         self._store_class = store_class
         self._database = database
         self._data_token = data_token
@@ -122,65 +125,80 @@ class DatabaseBackend(Generic[T], DataBackend):
 
     def __eq__(self, other: Any) -> Query:
         if type(other) is PandasBackend:
-            return DataStoreQuery(EqualsQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+            return DataStoreQuery(
+                EqualsQuery, AndGroupQuery, OrGroupQuery, other.to_pandas()
+            )
         else:
             return ColumnQuery(
-                EqualsQuery, AndGroupQuery, self._selected_columns, [other for _ in self._selected_columns]
+                EqualsQuery,
+                AndGroupQuery,
+                self._selected_columns,
+                other,
             )
 
     def __ne__(self, other: Any) -> Query:
         if type(other) is PandasBackend:
-            return DataStoreQuery(NotEqualsQuery, OrGroupQuery, AndGroupQuery, other.to_pandas())
+            return DataStoreQuery(
+                NotEqualsQuery, OrGroupQuery, AndGroupQuery, other.to_pandas()
+            )
         else:
             return ColumnQuery(
                 NotEqualsQuery,
                 AndGroupQuery,
                 self._selected_columns,
-                [other for _ in self._selected_columns],
+                other,
             )
 
     def __gt__(self, other: Any) -> Query:
         if type(other) is PandasBackend:
-            return DataStoreQuery(GreaterThanQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+            return DataStoreQuery(
+                GreaterThanQuery, AndGroupQuery, OrGroupQuery, other.to_pandas()
+            )
         else:
             return ColumnQuery(
                 GreaterThanQuery,
                 AndGroupQuery,
                 self._selected_columns,
-                [other for _ in self._selected_columns],
+                other,
             )
 
     def __ge__(self, other: Any) -> Query:
         if type(other) is PandasBackend:
-            return DataStoreQuery(GreaterEqualQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+            return DataStoreQuery(
+                GreaterEqualQuery, AndGroupQuery, OrGroupQuery, other.to_pandas()
+            )
         else:
             return ColumnQuery(
                 GreaterEqualQuery,
                 AndGroupQuery,
                 self._selected_columns,
-                [other for _ in self._selected_columns],
+                other,
             )
 
     def __lt__(self, other: Any) -> Query:
         if type(other) is PandasBackend:
-            return DataStoreQuery(LessThanQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+            return DataStoreQuery(
+                LessThanQuery, AndGroupQuery, OrGroupQuery, other.to_pandas()
+            )
         else:
             return ColumnQuery(
                 LessThanQuery,
                 AndGroupQuery,
                 self._selected_columns,
-                [other for _ in self._selected_columns],
+                other,
             )
 
     def __le__(self, other: Any) -> Query:
         if type(other) is PandasBackend:
-            return DataStoreQuery(LessEqualQuery, AndGroupQuery, OrGroupQuery, other.to_pandas())
+            return DataStoreQuery(
+                LessEqualQuery, AndGroupQuery, OrGroupQuery, other.to_pandas()
+            )
         else:
             return ColumnQuery(
                 LessEqualQuery,
                 AndGroupQuery,
                 self._selected_columns,
-                [other for _ in self._selected_columns],
+                other,
             )
 
     def __len__(self):
@@ -213,9 +231,12 @@ class DatabaseBackend(Generic[T], DataBackend):
             read_only=self._read_only,
         )
 
+    def __setitem__(self, item: str, value: Any) -> None:
+        raise NotImplementedError("The current version of Tanuki does not support Store to DB writing")
+
     def getmask(self, mask: list[bool]) -> DatabaseBackend:
         indices = np.where(mask)[0]
-        return self.query(self.index == indices)
+        return self.query().iloc[indices]
 
     def get_index(self, index_alias: IndexAlias) -> Index:
         cols = [str(col) for col in index_alias.columns]
@@ -242,15 +263,21 @@ class DatabaseBackend(Generic[T], DataBackend):
             read_only=self._read_only,
         )
 
+    def drop_indices(self, indices: list[int]) -> DatabaseBackend:
+        raise NotImplementedError("The current version of Tanuki does not support Store to DB writing")
+
     def query(self, query: Optional[Query] = None) -> PandasBackend:
-        return self._database.query(
+        datastore = self._database.query(
             self._store_class, self._data_token, query, self._selected_columns
-        )._data_backend
+        )
+        if len(self.index.columns) > 0:
+            datastore.set_index(self.index)
+        return datastore._data_backend
 
     def append(
         clt: DatabaseBackend, new_backend: DatabaseBackend, ignore_index: bool = False
     ) -> DatabaseBackend:
-        raise NotImplementedError()
+        raise NotImplementedError("The current version of Tanuki does not support Store to DB writing")
 
     def __str__(self: DatabaseBackend) -> str:
         return f"Database Link: {self._data_token}\nActive Columns: {self._selected_columns}"
@@ -264,7 +291,7 @@ class DatabaseBackend(Generic[T], DataBackend):
         all_backends: list[DatabaseBackend],
         ignore_index: bool = False,
     ) -> DatabaseBackend:
-        raise NotImplementedError()
+        raise NotImplementedError("The current version of Tanuki does not support Store to DB writing")
 
 
 class _ILocIndexer(ILocIndexer[DatabaseBackend]):
@@ -285,6 +312,3 @@ class _LocIndexer(LocIndexer[DatabaseBackend]):
 
     def __getitem__(self, item: Union[Any, list, slice]) -> DatabaseBackend:
         return self._data_backend.query().loc[item]
-
-
-from src.data_store.index.database_index import DatabaseIndex

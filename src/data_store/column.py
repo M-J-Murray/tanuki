@@ -9,6 +9,7 @@ from typing import (
     Iterator,
     Optional,
     Type,
+    TYPE_CHECKING,
     TypeVar,
     Union,
 )
@@ -22,6 +23,9 @@ T = TypeVar("T")
 NT = TypeVar("NT")
 Indexible = Union[Any, list, Index]
 
+
+from src.data_backend.data_backend import DataBackend
+from src.data_backend.pandas_backend import PandasBackend
 
 B = TypeVar("B", bound="DataBackend")
 
@@ -51,7 +55,6 @@ class Column(Generic[T]):
             if issubclass(type(data), DataBackend):
                 self._data_backend = data
             else:
-                from src.data_backend.pandas_backend import PandasBackend
                 self._data_backend = PandasBackend({name: data}, index=index)
             self.dtype = (
                 self.infer_dtype(self.name, self._data_backend)
@@ -59,7 +62,6 @@ class Column(Generic[T]):
                 else DataType(dtype)
             )
         else:
-            from src.data_backend.pandas_backend import PandasBackend
             self._data_backend = PandasBackend(index=index)
             self.dtype = Object
 
@@ -92,7 +94,9 @@ class Column(Generic[T]):
                 sample = data_backend.iloc[0].values[0]
                 stype = type(sample)
                 if stype is list or stype is set:
-                    dtype = DataType(GenericAlias(stype, Column.determine_nested_dtype(sample)))
+                    dtype = DataType(
+                        GenericAlias(stype, Column.determine_nested_dtype(sample))
+                    )
                 else:
                     dtype = stype
         return DataType(dtype)
@@ -230,7 +234,3 @@ class Column(Generic[T]):
         def __getitem__(self, item: Union[Any, list, slice]) -> Column[T]:
             data = self._column._data_backend.loc[item]
             return Column._new_data_copy(self._column.name, data, self._column.dtype)
-
-
-from src.data_backend.data_backend import DataBackend
-

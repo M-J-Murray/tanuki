@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import UnsupportedOperation
-from typing import Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Optional, Type, TypeVar
 
 from src.data_store.query import Query
 from src.database.adapter.database_adapter import DatabaseAdapter
@@ -15,6 +15,12 @@ from .reference_tables import (
     StoreReference,
     TableReference,
 )
+
+
+if TYPE_CHECKING:
+    from src.data_store.data_store import DataStore
+
+T = TypeVar("T", bound="DataStore")
 
 
 class DatabaseRegistrar:
@@ -432,8 +438,3 @@ class DatabaseRegistrar:
                 StoreReference.store_version == store_version
             )
             self._db_adapter.delete(StoreReference.data_token, criteria)
-
-
-from src.data_store.data_store import DataStore
-
-T = TypeVar("T", bound=DataStore)

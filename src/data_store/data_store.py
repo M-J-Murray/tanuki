@@ -10,6 +10,7 @@ from typing import (
     Iterable,
     Optional,
     Type,
+    TYPE_CHECKING,
     TypeVar,
     Union,
 )
@@ -31,6 +32,11 @@ from .storable_type_factory import StorableTypeFactory
 
 B = TypeVar("B", bound=DataBackend)
 T = TypeVar("T", bound="DataStore")
+
+if TYPE_CHECKING:
+    from src.database.database import Database
+
+D = TypeVar("D", bound="Database")
 
 
 class DataStore:
@@ -435,8 +441,3 @@ class DataStore:
             return self._data_store.from_backend(
                 self._data_store._data_backend.loc[item]
             )
-
-
-from src.database.database import Database
-
-D = TypeVar("D", bound="Database")

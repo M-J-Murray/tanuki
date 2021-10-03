@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Optional, Type, TypeVar
 
 from src.data_store.index.index import Index
 from src.data_store.query import Query
 from src.database.data_token import DataToken
 
+if TYPE_CHECKING:
+    from src.data_store.data_store import DataStore
+
+T = TypeVar("T", bound="DataStore")
+
 
 class DatabaseAdapter:
-
     def __enter__(self):
         raise NotImplementedError()
 
@@ -137,8 +141,3 @@ class DatabaseAdapter:
 
     def stop(self: DatabaseAdapter) -> None:
         raise NotImplementedError()
-
-
-from src.data_store.data_store import DataStore
-
-T = TypeVar("T", bound=DataStore)

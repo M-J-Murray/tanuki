@@ -6,7 +6,6 @@ from test.helpers.sqlite3_container import Sqlite3Container
 
 from hamcrest import assert_that, equal_to, is_
 import numpy as np
-from pandas import DataFrame
 from pandas import Index as PIndex
 from pandas import Series
 from pytest import fail
@@ -112,7 +111,7 @@ class TestDatabaseBackend:
             equal_to(True),
         )
 
-        new_expected = np.array([["a"], ["b"], ["c"]])
+        new_expected = np.array(["a", "b", "c"])
         new_store = self.data_backend.set_index(ExampleStore.a_index)
         assert_that(new_store.index.name, equal_to("a_index"))
         assert_that(isinstance(new_store.index, DatabaseIndex), equal_to(True))
@@ -243,11 +242,15 @@ class TestDatabaseBackend:
             assert_that(c, equal_to(iloc_row["c"].values[0]))
 
     def test_getitem(self) -> None:
-        expected = DatabaseBackend(ExampleStore, self.db, ExampleStore.data_token, selected_columns=["b"])
+        expected = DatabaseBackend(
+            ExampleStore, self.db, ExampleStore.data_token, selected_columns=["b"]
+        )
         assert_that(self.data_backend["b"].equals(expected), equal_to(True))
 
     def test_getitems(self) -> None:
-        expected = DatabaseBackend(ExampleStore, self.db, ExampleStore.data_token, selected_columns=["a", "b"])
+        expected = DatabaseBackend(
+            ExampleStore, self.db, ExampleStore.data_token, selected_columns=["a", "b"]
+        )
         assert_that(
             self.data_backend.getitems(["a", "b"]).equals(expected), equal_to(True)
         )
@@ -256,9 +259,8 @@ class TestDatabaseBackend:
         test = self.data_backend.getmask([True, False, True])
         expected = PandasBackend(
             {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
-            index=PandasIndex(PIndex([0, 2]), []),
+            index=PandasIndex(PIndex([0, 2], name="index"), []),
         )
-        repr(expected)
         assert_that(test.equals(expected), equal_to(True))
 
     def test_query(self) -> None:
@@ -266,50 +268,59 @@ class TestDatabaseBackend:
         test = self.data_backend.query(query)
         expected = PandasBackend(
             {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
-            index=PandasIndex(PIndex([0, 2]), []),
+            index=PandasIndex(PIndex([0, 1], name="index"), []),
         )
         assert_that(test.equals(expected), equal_to(True))
 
     def test_setitem(self) -> None:
-        self.data_backend["a"] = ["d", "e", "f"]
-        expected = PandasBackend(
-            {"a": ["d", "e", "f"], "b": [1, 2, 3], "c": [True, False, True]}
-        )
-        assert_that(self.data_backend.equals(expected), equal_to(True))
+        try:
+            self.data_backend["a"] = ["d", "e", "f"]
+            fail("Expected exception")
+        except NotImplementedError as e:
+            assert_that(
+                str(e),
+                equal_to(
+                    "The current version of Tanuki does not support Store to DB writing"
+                ),
+            )
 
     def test_append(self) -> None:
-        postfix = PandasBackend({"a": ["d"], "b": [4], "c": [False]})
-        new_frame = self.data_backend.append(postfix, ignore_index=True)
-        expected = PandasBackend(
-            {
-                "a": ["a", "b", "c", "d"],
-                "b": [1, 2, 3, 4],
-                "c": [True, False, True, False],
-            }
-        )
-        assert_that(new_frame.equals(expected), equal_to(True))
+        try:
+            postfix = PandasBackend({"a": ["d"], "b": [4], "c": [False]})
+            new_frame = self.data_backend.append(postfix, ignore_index=True)
+            fail("Expected exception")
+        except NotImplementedError as e:
+            assert_that(
+                str(e),
+                equal_to(
+                    "The current version of Tanuki does not support Store to DB writing"
+                ),
+            )
 
     def test_drop_indices(self) -> None:
-        new_frame = self.data_backend.drop_indices([1])
-        expected = PandasBackend(
-            {"a": ["a", "c"], "b": [1, 3], "c": [True, True]},
-            index=PandasIndex(PIndex([0, 2]), []),
-        )
-        assert_that(new_frame.equals(expected), equal_to(True))
+        try:
+            self.data_backend.drop_indices([1])
+            fail("Expected exception")
+        except NotImplementedError as e:
+            assert_that(
+                str(e),
+                equal_to(
+                    "The current version of Tanuki does not support Store to DB writing"
+                ),
+            )
 
     def test_concat(self) -> None:
-        postfix = PandasBackend({"a": ["d"], "b": [4], "c": [False]})
-        new_frame = PandasBackend.concat(
-            [self.data_backend, postfix], ignore_index=True
-        )
-        expected = PandasBackend(
-            {
-                "a": ["a", "b", "c", "d"],
-                "b": [1, 2, 3, 4],
-                "c": [True, False, True, False],
-            }
-        )
-        assert_that(new_frame.equals(expected), equal_to(True))
+        try:
+            postfix = PandasBackend({"a": ["d"], "b": [4], "c": [False]})
+            DatabaseBackend.concat([self.data_backend, postfix], ignore_index=True)
+            fail("Expected exception")
+        except NotImplementedError as e:
+            assert_that(
+                str(e),
+                equal_to(
+                    "The current version of Tanuki does not support Store to DB writing"
+                ),
+            )
 
     def test_str(self) -> None:
         expected = "Database Link: raw.test\nActive Columns: ['a', 'b', 'c']"

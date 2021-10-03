@@ -1,15 +1,17 @@
 from __future__ import annotations
+import re
 
-from typing import Iterable, TypeVar, Union
+from typing import Any, Iterable, TYPE_CHECKING, TypeVar, Union
 
 import numpy as np
 from pandas import Index as PIndex
 
-from src.data_store.column_alias import ColumnAlias
-
 from .index import Index
 
-C = TypeVar("C", bound=tuple[ColumnAlias, ...])
+if TYPE_CHECKING:
+    from src.data_store.column_alias import ColumnAlias
+
+C = TypeVar("C", bound=tuple["ColumnAlias", ...])
 
 
 class PandasIndex(Index[C]):
@@ -32,8 +34,17 @@ class PandasIndex(Index[C]):
     def columns(self) -> list[str]:
         return self._columns
 
+    def to_pandas(self) -> PandasIndex[C]:
+        return PandasIndex(self._data, self._columns)
+
     def __getitem__(self, item) -> Index[C]:
-        return PandasIndex(self._data[item], self._columns)
+        result = self._data[item]
+        if issubclass(type(result), PIndex):
+            result.name = self.name
+            return PandasIndex(result, self._columns)
+        else:
+            return result
+        
 
     @property
     def values(self) -> np.ndarray:
@@ -43,7 +54,44 @@ class PandasIndex(Index[C]):
         return self._data.values.tolist()
 
     def equals(self, other: PandasIndex) -> bool:
-        return self._data.equals(other._data) and self.columns == other.columns
+        return (
+            self.name == other.name
+            and self._data.equals(other._data)
+            and self.columns == other.columns
+        )
+
+    def __eq__(self, other) -> PandasIndex:
+        if type(other) is PandasIndex:
+            other = other._data
+        return self._data == other
+
+    def __ne__(self, other: Any) -> PandasIndex:
+        if type(other) is PandasIndex:
+            other = other._data
+        return self._data != other
+
+    def __gt__(self, other: Any) -> PandasIndex:
+        if type(other) is PandasIndex:
+            other = other._data
+        return self._data > other
+
+    def __ge__(self, other: Any) -> PandasIndex:
+        if type(other) is PandasIndex:
+            other = other._data
+        return self._data >= other
+
+    def __lt__(self, other: Any) -> PandasIndex:
+        if type(other) is PandasIndex:
+            other = other._data
+        return self._data < other
+
+    def __le__(self, other: Any) -> PandasIndex:
+        if type(other) is PandasIndex:
+            other = other._data
+        return self._data <= other
+    
+    def __len__(self) -> int:
+        return len(self._data)
 
     def __str__(self) -> str:
         result = f"Index {self.name}"

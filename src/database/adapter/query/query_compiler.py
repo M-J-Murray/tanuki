@@ -1,8 +1,26 @@
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar, Union
+from typing import Any, Generic, TYPE_CHECKING, TypeVar, Union
 
 T = TypeVar("T")
+
+from src.data_store.query import Query
+
+if TYPE_CHECKING:
+    from src.data_store.query import (
+        AndGroupQuery,
+        AndQuery,
+        EqualsQuery,
+        GreaterEqualQuery,
+        GreaterThanQuery,
+        LessEqualQuery,
+        LessThanQuery,
+        NotEqualsQuery,
+        OrGroupQuery,
+        OrQuery,
+        RowCountQuery,
+        SumQuery,
+    )
 
 
 class QueryCompiler(Generic[T]):
@@ -46,20 +64,3 @@ class QueryCompiler(Generic[T]):
         if not isinstance(query, Query):
             return query
         return query.compile(self)
-
-
-from src.data_store.query import (
-    AndGroupQuery,
-    AndQuery,
-    EqualsQuery,
-    GreaterEqualQuery,
-    GreaterThanQuery,
-    LessEqualQuery,
-    LessThanQuery,
-    NotEqualsQuery,
-    OrGroupQuery,
-    OrQuery,
-    Query,
-    RowCountQuery,
-    SumQuery,
-)

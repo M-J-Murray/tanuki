@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from src.data_store.column_alias import ColumnAlias
+
+
 class IndexAlias:
     name: str
     columns: list[ColumnAlias]
@@ -13,6 +20,3 @@ class IndexAlias:
 
     def __repr__(self) -> str:
         return str(self)
-
-
-from src.data_store.column_alias import ColumnAlias

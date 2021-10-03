@@ -1,13 +1,28 @@
 from __future__ import annotations
 
 from abc import abstractclassmethod, abstractmethod, abstractproperty
-from typing import Any, Generator, Generic, Optional, Type, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generator,
+    Generic,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 from pandas import DataFrame
 
 from src.data_store.data_type import DataType
 from src.database.data_token import DataToken
+
+if TYPE_CHECKING:
+    from src.data_store.index.index import Index
+    from src.data_store.index.index_alias import IndexAlias
+    from src.data_store.query import Query
+
 
 B = TypeVar("B", bound="DataBackend")
 
@@ -172,8 +187,3 @@ class DataBackend:
     @abstractmethod
     def __repr__(self: B) -> str:
         raise NotImplementedError()
-
-
-from src.data_store.index.index import Index
-from src.data_store.index.index_alias import IndexAlias
-from src.data_store.query import Query
