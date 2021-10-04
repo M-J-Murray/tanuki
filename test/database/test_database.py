@@ -3,9 +3,9 @@ from test.helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
 
-from src.database.data_token import DataToken
-from src.database.database import Database
-from src.database.reference_tables import PROTECTED_GROUP
+from src.tanuki.database.data_token import DataToken
+from src.tanuki.database.database import Database
+from src.tanuki.database.reference_tables import PROTECTED_GROUP
 
 
 class TestDatabase:

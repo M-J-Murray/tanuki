@@ -10,12 +10,12 @@ from pandas import Index as PIndex
 from pandas import Series
 from pytest import fail
 
-from src.data_backend.database_backend import DatabaseBackend
-from src.data_backend.pandas_backend import PandasBackend
-from src.data_store.data_type import Boolean, Int64, String
-from src.data_store.index.database_index import DatabaseIndex
-from src.data_store.index.pandas_index import PandasIndex
-from src.database.sqlite3_database import Sqlite3Database
+from src.tanuki.data_backend.database_backend import DatabaseBackend
+from src.tanuki.data_backend.pandas_backend import PandasBackend
+from src.tanuki.data_store.data_type import Boolean, Int64, String
+from src.tanuki.data_store.index.database_index import DatabaseIndex
+from src.tanuki.data_store.index.pandas_index import PandasIndex
+from src.tanuki.database.sqlite3_database import Sqlite3Database
 
 
 class TestDatabaseBackend:

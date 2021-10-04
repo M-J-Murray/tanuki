@@ -11,10 +11,10 @@ from test.helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
 
-from src.data_store.data_type import Boolean, Int64, String
-from src.database.data_token import DataToken
-from src.database.database_registrar import DatabaseRegistrar
-from src.database.reference_tables import PROTECTED_GROUP, StoreDefinition
+from src.tanuki.data_store.data_type import Boolean, Int64, String
+from src.tanuki.database.data_token import DataToken
+from src.tanuki.database.database_registrar import DatabaseRegistrar
+from src.tanuki.database.reference_tables import PROTECTED_GROUP, StoreDefinition
 
 
 class TestDatabaseRegistrar:

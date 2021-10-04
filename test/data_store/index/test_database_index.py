@@ -8,9 +8,9 @@ import numpy as np
 from precisely import assert_that, equal_to
 from pytest import fail
 
-from src.data_store.index.database_index import DatabaseIndex
-from src.data_store.index.pandas_index import PandasIndex, PIndex
-from src.database.sqlite3_database import Sqlite3Database
+from src.tanuki.data_store.index.database_index import DatabaseIndex
+from src.tanuki.data_store.index.pandas_index import PandasIndex, PIndex
+from src.tanuki.database.sqlite3_database import Sqlite3Database
 
 
 class TestDatabaseIndex:

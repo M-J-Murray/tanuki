@@ -2,8 +2,8 @@ from attr import dataclass
 from hamcrest import assert_that, close_to, equal_to
 import pytest
 
-from src.data_store.column import Column
-from src.data_store.data_type import (
+from src.tanuki.data_store.column import Column
+from src.tanuki.data_store.data_type import (
     Array,
     Boolean,
     Bytes,

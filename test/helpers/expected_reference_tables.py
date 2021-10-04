@@ -1,7 +1,7 @@
 import pickle
 
-from src.data_store.data_type import Boolean, Bytes, Int64, String
-from src.database.reference_tables import (
+from src.tanuki.data_store.data_type import Boolean, Bytes, Int64, String
+from src.tanuki.database.reference_tables import (
     IndexReference,
     PROTECTED_GROUP,
     StoreDefinition,

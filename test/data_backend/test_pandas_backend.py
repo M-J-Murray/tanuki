@@ -7,9 +7,9 @@ from pandas import Index as PIndex
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
-from src.data_backend.pandas_backend import PandasBackend
-from src.data_store.data_type import Boolean, Int64, Object
-from src.data_store.index.pandas_index import PandasIndex
+from src.tanuki.data_backend.pandas_backend import PandasBackend
+from src.tanuki.data_store.data_type import Boolean, Int64, Object
+from src.tanuki.data_store.index.pandas_index import PandasIndex
 
 
 class TestPandasBackend:

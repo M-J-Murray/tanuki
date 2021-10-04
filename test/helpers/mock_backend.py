@@ -1,9 +1,9 @@
 from typing import Optional
 
-from src.data_backend.data_backend import DataBackend
-from src.data_store.index.index import Index
-from src.data_store.index.index_alias import IndexAlias
-from src.database.data_token import DataToken
+from src.tanuki.data_backend.data_backend import DataBackend
+from src.tanuki.data_store.index.index import Index
+from src.tanuki.data_store.index.index_alias import IndexAlias
+from src.tanuki.database.data_token import DataToken
 
 
 class MockBackend(DataBackend):

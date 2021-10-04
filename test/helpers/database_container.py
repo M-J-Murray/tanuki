@@ -1,4 +1,4 @@
-from src.database.connection_config import ConnectionConfig
+from src.tanuki.database.connection_config import ConnectionConfig
 
 
 class DatabaseContainer:

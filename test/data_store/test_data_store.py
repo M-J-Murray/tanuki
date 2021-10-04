@@ -7,11 +7,11 @@ from hamcrest import assert_that, equal_to, is_, is_in
 from pandas import DataFrame
 from pytest import fail
 
-from src.data_store.column import Column
-from src.data_store.column_alias import ColumnAlias
-from src.data_store.data_store import DataStore
-from src.data_store.data_type import Boolean, Int64, String
-from src.data_store.index.index import Index
+from src.tanuki.data_store.column import Column
+from src.tanuki.data_store.column_alias import ColumnAlias
+from src.tanuki.data_store.data_store import DataStore
+from src.tanuki.data_store.data_type import Boolean, Int64, String
+from src.tanuki.data_store.index.index import Index
 
 
 class TestDataStore:

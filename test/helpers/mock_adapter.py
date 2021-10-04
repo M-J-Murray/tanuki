@@ -6,12 +6,12 @@ import pandas as pd
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
-from src.data_store.data_store import DataStore
-from src.data_store.index.index import Index
-from src.data_store.query import Query
-from src.database.adapter.database_adapter import DatabaseAdapter
-from src.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
-from src.database.data_token import DataToken
+from src.tanuki.data_store.data_store import DataStore
+from src.tanuki.data_store.index.index import Index
+from src.tanuki.data_store.query import Query
+from src.tanuki.database.adapter.database_adapter import DatabaseAdapter
+from src.tanuki.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
+from src.tanuki.database.data_token import DataToken
 
 T = TypeVar("T", bound=DataStore)
 
