@@ -8,8 +8,8 @@ from .index import Index
 from .pandas_index import PandasIndex, PIndex
 
 if TYPE_CHECKING:
-    from src.tanuki.data_backend.database_backend import DatabaseBackend
-    from src.tanuki.data_store.column_alias import ColumnAlias
+    from tanuki.data_backend.database_backend import DatabaseBackend
+    from tanuki.data_store.column_alias import ColumnAlias
 
 C = TypeVar("C", bound=tuple["ColumnAlias", ...])
 

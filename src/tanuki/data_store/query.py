@@ -313,4 +313,4 @@ class OrGroupQuery(Query):
         return str(self)
 
 
-from src.tanuki.database.adapter.query.query_compiler import QueryCompiler
+from tanuki.database.adapter.query.query_compiler import QueryCompiler

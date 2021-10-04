@@ -1,6 +1,6 @@
 from typing import Any, cast, List, Optional, Tuple, Union
 
-from src.tanuki.database.data_token import DataToken
+from tanuki.database.data_token import DataToken
 
 
 class SqlStatement:

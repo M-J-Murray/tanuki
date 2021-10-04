@@ -3,7 +3,7 @@ from pandas import Index as PIndex
 from precisely import assert_that, equal_to
 from pytest import fail
 
-from src.tanuki.data_store.index.pandas_index import PandasIndex
+from tanuki.data_store.index.pandas_index import PandasIndex
 
 
 class TestPandasIndex:

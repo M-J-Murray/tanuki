@@ -1,6 +1,6 @@
-from src.tanuki.database.adapter.database_schema import DatabaseSchema
+from tanuki.database.adapter.database_schema import DatabaseSchema
 from typing import Type, TypeVar
-from src.tanuki.data_store.data_store import DataStore
+from tanuki.data_store.data_store import DataStore
 from .sqlite3_type import Sqlite3Type
 
 T = TypeVar("T", bound=DataStore)

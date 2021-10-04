@@ -17,15 +17,15 @@ from typing import (
 import numpy as np
 from pandas import Index
 
-from src.tanuki.data_store.data_type import Boolean, DataType, Object, TypeAlias
+from tanuki.data_store.data_type import Boolean, DataType, Object, TypeAlias
 
 T = TypeVar("T")
 NT = TypeVar("NT")
 Indexible = Union[Any, list, Index]
 
 
-from src.tanuki.data_backend.data_backend import DataBackend
-from src.tanuki.data_backend.pandas_backend import PandasBackend
+from tanuki.data_backend.data_backend import DataBackend
+from tanuki.data_backend.pandas_backend import PandasBackend
 
 B = TypeVar("B", bound="DataBackend")
 

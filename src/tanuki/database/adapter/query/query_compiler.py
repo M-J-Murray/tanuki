@@ -4,10 +4,10 @@ from typing import Any, Generic, TYPE_CHECKING, TypeVar, Union
 
 T = TypeVar("T")
 
-from src.tanuki.data_store.query import Query
+from tanuki.data_store.query import Query
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.query import (
+    from tanuki.data_store.query import (
         AndGroupQuery,
         AndQuery,
         EqualsQuery,

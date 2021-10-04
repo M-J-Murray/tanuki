@@ -3,7 +3,7 @@ from re import compile, Pattern
 import sys
 from typing import cast, ClassVar, ForwardRef, Type
 
-from src.tanuki.data_store.index.index_alias import IndexAlias
+from tanuki.data_store.index.index_alias import IndexAlias
 
 from .column import Column
 from .column_alias import ColumnAlias

@@ -1,10 +1,10 @@
-from test.helpers.example_store import ExampleStore
-from test.helpers.sqlite3_container import Sqlite3Container
+from helpers.example_store import ExampleStore
+from helpers.sqlite3_container import Sqlite3Container
 
 from hamcrest import assert_that, equal_to
 
-from src.tanuki.database.data_token import DataToken
-from src.tanuki.database.sqlite3_database import Sqlite3Database
+from tanuki.database.data_token import DataToken
+from tanuki.database.sqlite3_database import Sqlite3Database
 import tempfile
 from pathlib import Path
 import shutil

@@ -6,13 +6,13 @@ import numpy as np
 from pandas import Index as PIndex
 from pandas.core.frame import DataFrame
 
-from src.tanuki.data_backend.pandas_backend import PandasBackend
-from src.tanuki.data_store.data_store import DataStore
-from src.tanuki.data_store.index.database_index import DatabaseIndex
-from src.tanuki.data_store.index.index import Index
-from src.tanuki.data_store.index.index_alias import IndexAlias
-from src.tanuki.data_store.index.pandas_index import PandasIndex
-from src.tanuki.data_store.query import (
+from tanuki.data_backend.pandas_backend import PandasBackend
+from tanuki.data_store.data_store import DataStore
+from tanuki.data_store.index.database_index import DatabaseIndex
+from tanuki.data_store.index.index import Index
+from tanuki.data_store.index.index_alias import IndexAlias
+from tanuki.data_store.index.pandas_index import PandasIndex
+from tanuki.data_store.query import (
     AndGroupQuery,
     ColumnQuery,
     DataStoreQuery,
@@ -25,8 +25,8 @@ from src.tanuki.data_store.query import (
     OrGroupQuery,
     Query,
 )
-from src.tanuki.database.data_token import DataToken
-from src.tanuki.database.database import Database
+from tanuki.database.data_token import DataToken
+from tanuki.database.database import Database
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
 

@@ -1,8 +1,8 @@
 from pathlib import Path
 import shutil
-from test.helpers.database_container import DatabaseContainer
+from helpers.database_container import DatabaseContainer
 
-from src.tanuki.database.connection_config import ConnectionConfig
+from tanuki.database.connection_config import ConnectionConfig
 
 
 class Sqlite3Container(DatabaseContainer):

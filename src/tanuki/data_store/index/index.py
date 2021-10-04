@@ -6,8 +6,8 @@ from typing import Any, Generic, TYPE_CHECKING, TypeVar, Union
 import numpy as np
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.column_alias import ColumnAlias
-    from src.tanuki.data_store.index.pandas_index import PandasIndex
+    from tanuki.data_store.column_alias import ColumnAlias
+    from tanuki.data_store.index.pandas_index import PandasIndex
 
 
 

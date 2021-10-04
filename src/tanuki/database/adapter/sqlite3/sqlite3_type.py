@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.tanuki.data_store.data_type import (
+from tanuki.data_store.data_type import (
     Boolean,
     Bytes,
     DataType,

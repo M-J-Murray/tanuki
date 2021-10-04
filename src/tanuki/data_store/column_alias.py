@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import UnsupportedOperation
 from typing import Optional
 
-from src.tanuki.data_store.data_type import DataType, TypeAlias
+from tanuki.data_store.data_type import DataType, TypeAlias
 
 from .column import Column
 
@@ -97,7 +97,7 @@ from .query import (
 old_len = builtins.len
 old_sum = builtins.sum
 
-from src.tanuki.data_store.query import Query
+from tanuki.data_store.query import Query
 
 
 def len(a: Union[Iterable, Query, ColumnAlias]) -> Union[Any, Query]:

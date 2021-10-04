@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "cwd": "${workspaceRoot}",
-            "env": {"PYTHONPATH": "${workspaceRoot}"},
+            "env": {"PYTHONPATH": "${workspaceRoot}/src"},
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -20,7 +20,7 @@
             "request": "test",
             "justMyCode": true,
             "cwd": "${workspaceRoot}",
-            "env": {"PYTHONPATH": "${workspaceRoot}"},
+            "env": {"PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/test"},
             "console": "integratedTerminal",
         }
     ]

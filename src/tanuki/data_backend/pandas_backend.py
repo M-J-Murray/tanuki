@@ -7,16 +7,16 @@ import pandas as pd
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
-from src.tanuki.data_store.data_type import DataType
-from src.tanuki.data_store.index.index import Index
-from src.tanuki.data_store.index.pandas_index import PandasIndex
-from src.tanuki.database.data_token import DataToken
+from tanuki.data_store.data_type import DataType
+from tanuki.data_store.index.index import Index
+from tanuki.data_store.index.pandas_index import PandasIndex
+from tanuki.database.data_token import DataToken
 
 from .data_backend import DataBackend, ILocIndexer, LocIndexer
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.index.index_alias import IndexAlias
-    from src.tanuki.data_store.query import Query
+    from tanuki.data_store.index.index_alias import IndexAlias
+    from tanuki.data_store.query import Query
 
 
 class PandasBackend(DataBackend):
@@ -167,7 +167,7 @@ class PandasBackend(DataBackend):
         return PandasBackend(self._data[mask])
 
     def query(self, query: "Query") -> PandasBackend:
-        from src.tanuki.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
+        from tanuki.database.adapter.query.pandas_query_compiler import PandasQueryCompiler
 
         query_compiler = PandasQueryCompiler(self._data)
         query = query_compiler.compile(query)

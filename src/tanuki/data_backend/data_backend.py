@@ -15,13 +15,13 @@ from typing import (
 import numpy as np
 from pandas import DataFrame
 
-from src.tanuki.data_store.data_type import DataType
-from src.tanuki.database.data_token import DataToken
+from tanuki.data_store.data_type import DataType
+from tanuki.database.data_token import DataToken
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.index.index import Index
-    from src.tanuki.data_store.index.index_alias import IndexAlias
-    from src.tanuki.data_store.query import Query
+    from tanuki.data_store.index.index import Index
+    from tanuki.data_store.index.index_alias import IndexAlias
+    from tanuki.data_store.query import Query
 
 
 B = TypeVar("B", bound="DataBackend")

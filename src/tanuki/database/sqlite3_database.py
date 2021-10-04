@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.tanuki.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
+from tanuki.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
 
 from .connection_config import ConnectionConfig
 from .database import Database

@@ -1,8 +1,8 @@
 from __future__ import annotations
-from src.tanuki.data_store.column import Column
-from src.tanuki.data_store.data_store import DataStore
-from src.tanuki.database.data_token import DataToken
-from src.tanuki.data_store.index.index import Index
+from tanuki.data_store.column import Column
+from tanuki.data_store.data_store import DataStore
+from tanuki.database.data_token import DataToken
+from tanuki.data_store.index.index import Index
 
 RAW_GROUP = "raw"
 

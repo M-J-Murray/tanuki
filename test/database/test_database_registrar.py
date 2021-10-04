@@ -1,20 +1,20 @@
 import pickle
-from test.helpers.example_store import ExampleStore, RAW_GROUP
-from test.helpers.expected_reference_tables import (
+from helpers.example_store import ExampleStore, RAW_GROUP
+from helpers.expected_reference_tables import (
     STORE_DEFINITION_STORE_DEFINITION,
     STORE_REFERENCE,
     STORE_REFERENCE_STORE_DEFINITION,
     TABLE_REFERENCE,
     TABLE_REFERENCE_STORE_DEFINITION,
 )
-from test.helpers.mock_adapter import MockAdapter
+from helpers.mock_adapter import MockAdapter
 
 from hamcrest import assert_that, equal_to, is_
 
-from src.tanuki.data_store.data_type import Boolean, Int64, String
-from src.tanuki.database.data_token import DataToken
-from src.tanuki.database.database_registrar import DatabaseRegistrar
-from src.tanuki.database.reference_tables import PROTECTED_GROUP, StoreDefinition
+from tanuki.data_store.data_type import Boolean, Int64, String
+from tanuki.database.data_token import DataToken
+from tanuki.database.database_registrar import DatabaseRegistrar
+from tanuki.database.reference_tables import PROTECTED_GROUP, StoreDefinition
 
 
 class TestDatabaseRegistrar:

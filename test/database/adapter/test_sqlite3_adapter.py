@@ -1,16 +1,16 @@
 from pathlib import Path
 import shutil
 import tempfile
-from test.helpers.example_store import ExampleStore, RAW_GROUP
-from test.helpers.mock_backend import MockBackend
-from test.helpers.sqlite3_container import Sqlite3Container
+from helpers.example_store import ExampleStore, RAW_GROUP
+from helpers.mock_backend import MockBackend
+from helpers.sqlite3_container import Sqlite3Container
 
 from hamcrest import assert_that, equal_to, is_
 from pytest import fail
 
-from src.tanuki.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
-from src.tanuki.database.data_token import DataToken
-from src.tanuki.database.db_exceptions import DatabaseAdapterUsageError
+from tanuki.database.adapter.sqlite3.sqlite3_adapter import Sqlite3Adapter
+from tanuki.database.data_token import DataToken
+from tanuki.database.db_exceptions import DatabaseAdapterUsageError
 
 
 class TestSqlite3Adapter:

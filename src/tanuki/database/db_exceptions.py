@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.tanuki.database.data_token import DataToken
+from tanuki.database.data_token import DataToken
 
 
 class DatabaseAdapterUsageError(IOError):

@@ -4,11 +4,11 @@ import pickle
 from types import new_class
 from typing import Any, Type, TypeVar
 
-from src.tanuki.data_store.column import Column
-from src.tanuki.data_store.data_store import DataStore
-from src.tanuki.data_store.data_type import Bytes
-from src.tanuki.data_store.index.index import Index
-from src.tanuki.database.data_token import DataToken
+from tanuki.data_store.column import Column
+from tanuki.data_store.data_store import DataStore
+from tanuki.data_store.data_type import Bytes
+from tanuki.data_store.index.index import Index
+from tanuki.database.data_token import DataToken
 
 T = TypeVar("T", bound=DataStore)
 

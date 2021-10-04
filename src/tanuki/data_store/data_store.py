@@ -18,15 +18,15 @@ from typing import (
 import numpy as np
 from pandas import DataFrame, Series
 
-from src.tanuki.data_backend.data_backend import DataBackend
-from src.tanuki.data_backend.pandas_backend import PandasBackend
-from src.tanuki.data_store.column import Column
-from src.tanuki.data_store.column_alias import ColumnAlias
-from src.tanuki.data_store.data_type import Boolean, DataType, String, TypeAlias
-from src.tanuki.data_store.index.index import Index
-from src.tanuki.data_store.index.index_alias import IndexAlias
-from src.tanuki.data_store.query import Query
-from src.tanuki.database.data_token import DataToken
+from tanuki.data_backend.data_backend import DataBackend
+from tanuki.data_backend.pandas_backend import PandasBackend
+from tanuki.data_store.column import Column
+from tanuki.data_store.column_alias import ColumnAlias
+from tanuki.data_store.data_type import Boolean, DataType, String, TypeAlias
+from tanuki.data_store.index.index import Index
+from tanuki.data_store.index.index_alias import IndexAlias
+from tanuki.data_store.query import Query
+from tanuki.database.data_token import DataToken
 
 from .storable_type_factory import StorableTypeFactory
 
@@ -34,7 +34,7 @@ B = TypeVar("B", bound=DataBackend)
 T = TypeVar("T", bound="DataStore")
 
 if TYPE_CHECKING:
-    from src.tanuki.database.database import Database
+    from tanuki.database.database import Database
 
 D = TypeVar("D", bound="Database")
 
@@ -101,7 +101,7 @@ class DataStore:
     def link(
         cls: Type[T], database: D, data_token: DataToken, read_only: bool = True
     ) -> T:
-        from src.tanuki.data_backend.database_backend import DatabaseBackend
+        from tanuki.data_backend.database_backend import DatabaseBackend
 
         return cls.from_backend(
             DatabaseBackend[T](cls, database, data_token, read_only=read_only),

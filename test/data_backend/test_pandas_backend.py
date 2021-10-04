@@ -1,5 +1,5 @@
 from os import name
-from test.helpers.example_store import ExampleStore
+from helpers.example_store import ExampleStore
 
 from hamcrest import assert_that, equal_to, is_, is_in
 import numpy as np
@@ -7,9 +7,9 @@ from pandas import Index as PIndex
 from pandas.core.frame import DataFrame
 from pandas.core.series import Series
 
-from src.tanuki.data_backend.pandas_backend import PandasBackend
-from src.tanuki.data_store.data_type import Boolean, Int64, Object
-from src.tanuki.data_store.index.pandas_index import PandasIndex
+from tanuki.data_backend.pandas_backend import PandasBackend
+from tanuki.data_store.data_type import Boolean, Int64, Object
+from tanuki.data_store.index.pandas_index import PandasIndex
 
 
 class TestPandasBackend:

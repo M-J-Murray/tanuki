@@ -5,17 +5,17 @@ import sqlite3
 from sqlite3 import Connection, Cursor
 from typing import Optional, TypeVar
 
-from src.tanuki.data_store.data_store import DataStore
-from src.tanuki.data_store.index.index import Index
-from src.tanuki.data_store.query import AndGroupQuery, EqualsQuery, ColumnQuery, Query
-from src.tanuki.database.adapter.database_adapter import DatabaseAdapter
-from src.tanuki.database.adapter.database_schema import DatabaseSchema
-from src.tanuki.database.adapter.query.sql_query_compiler import SqlQueryCompiler
-from src.tanuki.database.adapter.statement.sql_statement import SqlStatement
-from src.tanuki.database.connection_config import ConnectionConfig
-from src.tanuki.database.data_token import DataToken
-from src.tanuki.database.db_exceptions import DatabaseAdapterError, DatabaseAdapterUsageError
-from src.tanuki.database.reference_tables import PROTECTED_GROUP
+from tanuki.data_store.data_store import DataStore
+from tanuki.data_store.index.index import Index
+from tanuki.data_store.query import AndGroupQuery, EqualsQuery, ColumnQuery, Query
+from tanuki.database.adapter.database_adapter import DatabaseAdapter
+from tanuki.database.adapter.database_schema import DatabaseSchema
+from tanuki.database.adapter.query.sql_query_compiler import SqlQueryCompiler
+from tanuki.database.adapter.statement.sql_statement import SqlStatement
+from tanuki.database.connection_config import ConnectionConfig
+from tanuki.database.data_token import DataToken
+from tanuki.database.db_exceptions import DatabaseAdapterError, DatabaseAdapterUsageError
+from tanuki.database.reference_tables import PROTECTED_GROUP
 
 from .sqlite3_schema import Sqlite3Schema
 

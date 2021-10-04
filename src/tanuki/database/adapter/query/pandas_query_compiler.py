@@ -2,8 +2,8 @@ from typing import Any
 
 from pandas import DataFrame
 
-from src.tanuki.data_store.column_alias import ColumnAlias
-from src.tanuki.data_store.query import (
+from tanuki.data_store.column_alias import ColumnAlias
+from tanuki.data_store.query import (
     AndGroupQuery,
     AndQuery,
     EqualsQuery,
@@ -16,7 +16,7 @@ from src.tanuki.data_store.query import (
     OrQuery,
     RowCountQuery,
 )
-from src.tanuki.database.adapter.query.query_compiler import QueryCompiler
+from tanuki.database.adapter.query.query_compiler import QueryCompiler
 
 
 class PandasQueryCompiler(QueryCompiler[DataFrame]):

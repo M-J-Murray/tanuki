@@ -3,9 +3,9 @@ from __future__ import annotations
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, cast, Optional, Type, TypeVar, Union
 
-from src.tanuki.data_store.column_alias import ColumnAlias
-from src.tanuki.data_store.data_type import DataType
-from src.tanuki.data_store.query import Query
+from tanuki.data_store.column_alias import ColumnAlias
+from tanuki.data_store.data_type import DataType
+from tanuki.data_store.query import Query
 
 from .adapter.database_adapter import DatabaseAdapter
 from .data_token import DataToken
@@ -13,7 +13,7 @@ from .database_registrar import DatabaseRegistrar
 from .db_exceptions import MissingTableError
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.data_store import DataStore
+    from tanuki.data_store.data_store import DataStore
 
 T = TypeVar("T", bound="DataStore")
 

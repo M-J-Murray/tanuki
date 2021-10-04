@@ -9,7 +9,7 @@ from pandas import Index as PIndex
 from .index import Index
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.column_alias import ColumnAlias
+    from tanuki.data_store.column_alias import ColumnAlias
 
 C = TypeVar("C", bound=tuple["ColumnAlias", ...])
 

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, Type, TypeVar
 
-from src.tanuki.data_store.index.index import Index
-from src.tanuki.data_store.query import Query
-from src.tanuki.database.data_token import DataToken
+from tanuki.data_store.index.index import Index
+from tanuki.data_store.query import Query
+from tanuki.database.data_token import DataToken
 
 if TYPE_CHECKING:
-    from src.tanuki.data_store.data_store import DataStore
+    from tanuki.data_store.data_store import DataStore
 
 T = TypeVar("T", bound="DataStore")
 

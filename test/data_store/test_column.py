@@ -5,7 +5,7 @@ from hamcrest.core.core.is_ import is_
 from pandas.core.frame import DataFrame
 from pytest import fail
 
-from src.tanuki.data_store.column import Column
+from tanuki.data_store.column import Column
 
 
 class TestColumn:

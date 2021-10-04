@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from src.tanuki.data_store.query import (
+from tanuki.data_store.query import (
     AndQuery,
     EqualsQuery,
     GreaterEqualQuery,
@@ -13,7 +13,7 @@ from src.tanuki.data_store.query import (
     RowCountQuery,
     SumQuery,
 )
-from src.tanuki.database.adapter.query.query_compiler import QueryCompiler
+from tanuki.database.adapter.query.query_compiler import QueryCompiler
 
 
 @dataclass

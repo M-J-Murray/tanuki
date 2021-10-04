@@ -1,16 +1,16 @@
 from pathlib import Path
 import shutil
 import tempfile
-from test.helpers.example_store import ExampleStore
-from test.helpers.sqlite3_container import Sqlite3Container
+from helpers.example_store import ExampleStore
+from helpers.sqlite3_container import Sqlite3Container
 
 import numpy as np
 from precisely import assert_that, equal_to
 from pytest import fail
 
-from src.tanuki.data_store.index.database_index import DatabaseIndex
-from src.tanuki.data_store.index.pandas_index import PandasIndex, PIndex
-from src.tanuki.database.sqlite3_database import Sqlite3Database
+from tanuki.data_store.index.database_index import DatabaseIndex
+from tanuki.data_store.index.pandas_index import PandasIndex, PIndex
+from tanuki.database.sqlite3_database import Sqlite3Database
 
 
 class TestDatabaseIndex:
