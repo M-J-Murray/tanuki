@@ -25,6 +25,7 @@ from tanuki.data_store.column_alias import ColumnAlias
 from tanuki.data_store.data_type import Boolean, DataType, String, TypeAlias
 from tanuki.data_store.index.index import Index
 from tanuki.data_store.index.index_alias import IndexAlias
+from tanuki.data_store.metadata import Metadata
 from tanuki.data_store.query import Query
 from tanuki.database.data_token import DataToken
 
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
     from tanuki.database.database import Database
 
 D = TypeVar("D", bound="Database")
+M = TypeVar("M", bound="Metadata")
 
 
 class DataStore:
@@ -54,6 +56,7 @@ class DataStore:
     loc: DataStore._LocIndexer[T]
     iloc: DataStore._ILocIndexer[T]
     index: Index
+    metadata: Optional[M]
 
     def __init_subclass__(
         cls: Type[T], version: int = 1, register: bool = True
@@ -77,8 +80,9 @@ class DataStore:
             DataStore.registered_stores[cls.__name__] = cls
 
     def __init__(
-        self: T, index: Optional[Iterable] = None, **column_data: dict[str, list]
+        self: T, metadata: Optional[M] = None, index: Optional[Iterable] = None, **column_data: dict[str, list]
     ) -> None:
+        self.metadata = metadata
         if len(column_data) > 0:
             column_data = {str(name): col for name, col in column_data.items()}
             self._data_backend = PandasBackend(column_data, index=index)

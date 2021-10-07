@@ -1,82 +1,46 @@
-from datetime import datetime, timedelta
-from math import floor
+from datetime import datetime
+from typing import Optional
 import re
 
+from dateutil.relativedelta import relativedelta
+from dateutil.parser import parse
 
-def getf(matcher: re.Match, group: int, default: float) -> float:
-    value = matcher.group(group)
-    return float(value) if value is not None else default
-
-
-def geti(matcher: re.Match, group: int, default: int) -> int:
-    value = matcher.group(group)
-    return int(value) if value is not None else default
-
-
-def parse_datetime(str_datetime: str) -> datetime:
-    pattern = re.compile(
-        r"^(\d{2})-(\d{2})-(\d{2,4})(?:T(\d{2})(?:\:(\d{2})(?:\:(\d{2}))?)?)?$"
-    )
-    matches = pattern.match(str_datetime)
-    if bool(matches):
-        return datetime(
-            day=geti(matches, 1, 0),
-            month=geti(matches, 2, 0),
-            year=geti(matches, 3, 0),
-            hour=geti(matches, 4, 0),
-            minute=geti(matches, 5, 0),
-            second=geti(matches, 6, 0),
-        )
-    else:
-        raise ValueError("Invalid timestamp string")
-
-
-def format_datetime(timestamp: datetime) -> str:
-    str_def = f"{timestamp.day}-{timestamp.month}-{timestamp.year}"
-    if timestamp.second > 0:
-        str_def += f"T{timestamp.hour}:{timestamp.minute}:{timestamp.second}"
-    elif timestamp.minute > 0:
-        str_def += f"T{timestamp.hour}:{timestamp.minute}"
-    elif timestamp.hour > 0:
-        str_def += f"T{timestamp.hour}"
-    return str_def
-
-
-def parse_delta(str_delta: str) -> timedelta:
-    pattern = re.compile(
-        r"^(?:(\d+)d\s*)?"
-        + r"(?:(\d+)h\s*)?"
-        + r"(?:(\d+)m\s*)?"
-        + r"(?:(\d+)s\s*)?"
-        + r"(?:(\d+)ms\s*)?"
-        + r"(?:(\d+)us\s*)?$"
-    )
+def parse_delta(str_delta: str) -> Optional[relativedelta]:
+    pattern = re.compile(r"^\s*(\d+)(wk|ms|mo|s|m|h|d|)\s*?")
     matches = pattern.match(str_delta)
-    if bool(matches):
-        return timedelta(
-            seconds=(
-                (getf(matches, 1, 0) * (24 * 60 * 60))
-                + (getf(matches, 2, 0) * (60 * 60))
-                + (getf(matches, 3, 0) * 60)
-                + (getf(matches, 4, 0))
-            ),
-            microseconds=((getf(matches, 5, 0) * 1e3) + (getf(matches, 6, 0))),
-        )
+    if matches is None:
+        return None
+
+    amount = int(matches.group(1))
+    interval = matches.group(2)
+    return {
+        "wk": relativedelta(weeks=amount),
+        "ms": relativedelta(microseconds=amount),
+        "mo": relativedelta(months=amount),
+        "s": relativedelta(seconds=amount),
+        "m": relativedelta(minutes=amount),
+        "h": relativedelta(hours=amount),
+        "d": relativedelta(days=amount),
+    }[interval]
+    
+
+
+def format_delta(delta: relativedelta) -> Optional[str]:
+    if delta.months > 0:
+        return f"{delta.months}mo"
+    elif delta.weeks > 0:
+        return f"{delta.weeks}wk"
+    elif delta.days > 0:
+        return f"{delta.days}d"
+    elif delta.hours > 0:
+        return f"{delta.hours}h"
+    elif delta.minutes > 0:
+        return f"{delta.minutes}m"
+    elif delta.days > 0:
+        return f"{delta.days}d"
+    elif delta.microseconds > 0:
+        return f"{delta.microseconds}ms"
     else:
-        raise ValueError("Invalid timedelta string")
+        return None
 
-
-def format_delta(delta: timedelta) -> str:
-    units = []
-    units.append(delta.total_seconds() / (60 * 60 * 24))
-    units.append((units[-1] % 1) * 24)
-    units.append((units[-1] % 1) * 60)
-    units.append((units[-1] % 1) * 60)
-    units.append(floor(delta.microseconds * 1e-3))
-    units.append(delta.microseconds - (units[-1] * 1e3))
-
-    units = [floor(unit) for unit in units]
-    symbols = ["d", "h", "m", "s", "ms", "us"]
-    return " ".join(
-        [f"{unit}{symbol}" for unit, symbol in zip(units, symbols) if unit > 0]
-    )
+parse_delta("1h")
