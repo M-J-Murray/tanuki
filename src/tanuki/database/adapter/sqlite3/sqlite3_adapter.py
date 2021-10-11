@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 import sqlite3
 from sqlite3 import Connection
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, Type, TypeVar
 
 from tanuki.data_store.data_store import DataStore
 from tanuki.data_store.index.index import Index
@@ -34,6 +34,7 @@ from .uncommitted_change import (
 )
 
 T = TypeVar("T", bound=DataStore)
+M = TypeVar("M", bound=Metadata)
 
 
 class Sqlite3Adapter(DatabaseAdapter):
@@ -74,6 +75,9 @@ class Sqlite3Adapter(DatabaseAdapter):
             self.new_connection()
 
     def __exit__(self, etype, value, traceback):
+        if etype is not None:
+            self.rollback()
+
         self._enter_calls -= 1
         if self._enter_calls == 0:
             self._connection.commit()
@@ -82,11 +86,12 @@ class Sqlite3Adapter(DatabaseAdapter):
             self._uncommitted = []
             shutil.rmtree(str(self._checkpoint_dir))
             self._checkpoint_dir.mkdir(exist_ok=False)
+        
 
     def rollback(self):
         self._connection.rollback()
         for uncommitted in self._uncommitted:
-            uncommitted.rollback()
+            uncommitted.rollback(self._connection)
         self._uncommitted = []
         shutil.rmtree(str(self._checkpoint_dir))
         self._checkpoint_dir.mkdir(exist_ok=False)
@@ -106,7 +111,6 @@ class Sqlite3Adapter(DatabaseAdapter):
             )
             self._connection.execute(statement)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("create_group_table failed", e)
 
     def create_group(self: Sqlite3Adapter, data_group: str) -> None:
@@ -122,9 +126,8 @@ class Sqlite3Adapter(DatabaseAdapter):
             self._connection.execute(statement)
 
             data_group_path = Path(self._conn_config.uri()) / f"{data_group}.db"
-            self._uncommitted.append(UncommittedGroupCreate(data_group_path))
+            self._uncommitted.append(UncommittedGroupCreate(data_group, data_group_path))
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("create_group failed", e)
 
     def has_group_table(self: Sqlite3Adapter, data_token: DataToken) -> bool:
@@ -145,7 +148,6 @@ class Sqlite3Adapter(DatabaseAdapter):
             cursor = self._connection.execute(statement)
             return cursor.fetchone()[0] > 0
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("has_group_table failed", e)
 
     def has_group(self: Sqlite3Adapter, data_group: str) -> bool:
@@ -156,22 +158,20 @@ class Sqlite3Adapter(DatabaseAdapter):
             groups = {row[1] for row in cursor.fetchall()}
             return data_group in groups
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("has_group failed", e)
 
     def drop_group_table(self: Sqlite3Adapter, data_token: DataToken) -> None:
-        self.delete_metadata(data_token)
+        self._delete_group_table_metadata(data_token)
         if self._connection == None:
             raise DatabaseAdapterUsageError("drop_group_table")
         try:
             statement = SqlStatement().DROP_TABLE(f"{data_token}").compile()
             self._connection.execute(statement)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("drop_group_table failed", e)
 
     def drop_group(self: Sqlite3Adapter, data_group: str) -> None:
-        self.delete_metadata_group(data_group)
+        self._delete_group_metadata(data_group)
         if self._connection == None:
             raise DatabaseAdapterUsageError("drop_group")
         try:
@@ -186,7 +186,6 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._uncommitted.append(uncommittment)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("drop_group failed", e)
 
     def create_index(self: Sqlite3Adapter, data_token: DataToken, index: Index) -> None:
@@ -200,7 +199,6 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._connection.execute(statement)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("create_index failed", e)
 
     def has_index(self: Sqlite3Adapter, data_token: DataToken, index: Index) -> bool:
@@ -223,7 +221,6 @@ class Sqlite3Adapter(DatabaseAdapter):
             expected = set(str(col) for col in index.columns)
             return len(expected - cols) == 0
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("has_index failed", e)
 
     def query(
@@ -256,33 +253,40 @@ class Sqlite3Adapter(DatabaseAdapter):
             data_rows = cursor.fetchall()
             return data_rows
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("query failed", e)
 
-    def metadata_path(self, data_token: DataToken) -> Path:
+    def _group_table_metadata_path(self, data_token: DataToken) -> Path:
         group_path = self._metadata_dir / data_token.data_group
         group_path.mkdir(exist_ok=True)
         return group_path / f"{data_token.table_name}.json"
 
-    def update_metadata(self, data_token: DataToken, metadata: Metadata):
+    def get_group_table_metadata(self, data_token: DataToken, metadata_type: Type[M]) -> Optional[M]:
+        metadata_path = self._group_table_metadata_path(data_token)
+        if metadata_path.exists():
+            with open(metadata_path, "r") as metadata_file:
+                metadata_dict = json.load(metadata_file)
+                return metadata_type.from_dict(metadata_dict)
+        else:
+            return None
+
+    def _update_group_table_metadata(self, data_token: DataToken, metadata: Metadata):
         if self._connection == None:
             raise DatabaseAdapterUsageError("update_metadata")
         try:
             data_dict = metadata.to_dict()
-            metadata_path = self.metadata_path(data_token)
+            metadata_path = self._group_table_metadata_path(data_token)
             with open(str(metadata_path), "w") as metadata_file:
                 json.dump(data_dict, metadata_file)
 
             self._uncommitted.append(UncommittedMetadataCreate(metadata_path))
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("update_metadata failed", e)
 
-    def delete_metadata(self, data_token: DataToken):
+    def _delete_group_table_metadata(self, data_token: DataToken):
         if self._connection == None:
             raise DatabaseAdapterUsageError("delete_metadata")
         try:
-            metadata_path = self.metadata_path(data_token)
+            metadata_path = self._group_table_metadata_path(data_token)
             if not metadata_path.exists():
                 return
 
@@ -293,10 +297,9 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._uncommitted.append(uncommittment)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("delete_metadata failed", e)
 
-    def delete_metadata_group(self, data_group: str):
+    def _delete_group_metadata(self, data_group: str):
         if self._connection == None:
             raise DatabaseAdapterUsageError("delete_metadata_group")
         try:
@@ -311,7 +314,6 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._uncommitted.append(uncommittment)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("delete_metadata_group failed", e)
 
 
@@ -321,7 +323,8 @@ class Sqlite3Adapter(DatabaseAdapter):
         data_store: T,
     ) -> None:
         if data_store.metadata is not None:
-            self.update_metadata(data_token, data_store.metadata)
+            self._update_group_table_metadata(data_token, data_store.metadata)
+
         if self._connection == None:
             raise DatabaseAdapterUsageError("_insert_from_values")
         try:
@@ -340,7 +343,6 @@ class Sqlite3Adapter(DatabaseAdapter):
                 data_store.itertuples(ignore_index=True),
             )
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("_insert_from_values failed", e)
 
     def _insert_from_link(
@@ -361,7 +363,6 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._connection.execute(statement)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("_insert_from_link failed", e)
 
     def _update_from_values(
@@ -370,6 +371,9 @@ class Sqlite3Adapter(DatabaseAdapter):
         data_store: T,
         alignment_columns: list[str],
     ) -> None:
+        if data_store.metadata is not None:
+            self._update_group_table_metadata(data_token, data_store.metadata)
+
         if self._connection == None:
             raise DatabaseAdapterUsageError("_update_from_values")
         try:
@@ -397,7 +401,6 @@ class Sqlite3Adapter(DatabaseAdapter):
                 data_store[statement_columns].itertuples(ignore_index=True),
             )
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("_update_from_values failed", e)
 
     def _update_from_link(
@@ -421,7 +424,6 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._connection.execute(statement.compile())
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("_update_from_link failed", e)
 
     def _upsert_from_values(
@@ -430,6 +432,9 @@ class Sqlite3Adapter(DatabaseAdapter):
         data_store: T,
         alignment_columns: list[str],
     ) -> None:
+        if data_store.metadata is not None:
+            self._update_group_table_metadata(data_token, data_store.metadata)
+
         if self._connection == None:
             raise DatabaseAdapterUsageError("_upsert_from_values")
         try:
@@ -451,7 +456,6 @@ class Sqlite3Adapter(DatabaseAdapter):
                 data_store.itertuples(ignore_index=True),
             )
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("_upsert_from_values failed", e)
 
     def _upsert_from_link(
@@ -481,7 +485,6 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._connection.execute(statement)
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("_upsert_from_link failed", e)
 
     def delete(self: Sqlite3Adapter, data_token: DataToken, criteria: Query) -> None:
@@ -493,7 +496,6 @@ class Sqlite3Adapter(DatabaseAdapter):
             statement = SqlStatement().DELETE().FROM(data_token).WHERE(query)
             self._connection.execute(statement.compile())
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("delete failed", e)
 
     def row_count(self: Sqlite3Adapter, data_token: DataToken) -> int:
@@ -504,13 +506,11 @@ class Sqlite3Adapter(DatabaseAdapter):
             cursor = self._connection.execute(statement.compile())
             return cursor.fetchone()[0]
         except Exception as e:
-            self.rollback()
             raise DatabaseAdapterError("row_count failed", e)
 
     def stop(self: "Sqlite3Adapter") -> None:
         if self._enter_calls > 0:
             self._enter_calls = 0
         if self._connection is not None:
-            self.rollback()
             self._connection.close()
             self._connection = None

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import get_args, get_origin, Union
+
 from tanuki.data_store.data_type import (
+    Array,
     Boolean,
     Bytes,
     DataType,
@@ -13,12 +16,12 @@ from tanuki.data_store.data_type import (
     Int64,
     String,
     Timedelta,
-    Timestamp, TypeAlias,
+    Timestamp,
+    TypeAlias,
     UInt8,
     UInt16,
     UInt32,
     UInt64,
-    Array,
 )
 
 

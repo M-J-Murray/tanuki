@@ -1,9 +1,10 @@
 from collections import Counter
 from re import compile, Pattern
 import sys
-from typing import cast, ClassVar, ForwardRef, Type
+from typing import cast, ClassVar, ForwardRef, Optional, Type
 
 from tanuki.data_store.index.index_alias import IndexAlias
+from tanuki.data_store.metadata import Metadata
 
 from .column import Column
 from .column_alias import ColumnAlias
@@ -12,12 +13,20 @@ from .column_alias import ColumnAlias
 class StorableTypeFactory:
     TYPE_MATCHER: ClassVar[Pattern] = compile(r"^Index(?:\[(.*)\])?$")
 
+    metadata: Optional[Type[Metadata]]
     columns: dict[str, ColumnAlias]
     indices: dict[str, IndexAlias]
 
     def __init__(self, bases: list[type], type_annotations: dict[str, str]) -> None:
+        self.metadata = self.eval_metadata(bases, type_annotations)
         self.columns = self.eval_columns(bases, type_annotations)
         self.indices = self.eval_indices(type_annotations)
+
+    def eval_metadata(self, bases: list[type], type_annotations: dict[str, str]) -> Optional[Type[Metadata]]:
+        if "metadata" not in type_annotations:
+            return None
+        return self._eval_type(bases, type_annotations["metadata"])
+        
 
     def eval_columns(
         self, bases: list[type], type_annotations: dict[str, str]
@@ -28,7 +37,7 @@ class StorableTypeFactory:
             if isinstance(type_hint, str):
                 if type_hint[:6] != "Column":
                     continue
-                col_type = self._eval_column_type(bases, type_hint)
+                col_type = self._eval_type(bases, type_hint)
             else:
                 col_type = type_hint
             if col_type is Column or type(col_type) is Column:
@@ -45,7 +54,7 @@ class StorableTypeFactory:
         return columns
 
     @staticmethod
-    def _eval_column_type(bases: list[type], type_str: str) -> Type:
+    def _eval_type(bases: list[type], type_str: str) -> Type:
         ref = ForwardRef(type_str, is_argument=False)
         found_type = None
         for base in reversed(bases[:-1]):

@@ -1,3 +1,5 @@
+from datetime import datetime
+from helpers.example_metadata import ExampleMetadata
 from helpers.example_store import ExampleStore
 from helpers.sqlite3_container import Sqlite3Container
 
@@ -30,7 +32,15 @@ class TestAcceptance:
         cls.sql_db.stop()
 
     def test_create_insert_query_data(self) -> None:
+        metadata = ExampleMetadata(
+            test_str="test",
+            test_int=123,
+            test_float=0.123,
+            test_bool=True,
+            test_timestamp=datetime.now(),
+        )
         insert_store = ExampleStore(
+            metadata=metadata,
             a=["a", "b", "c"],
             b=[1, 2, 3],
             c=[True, False, True],
@@ -40,15 +50,13 @@ class TestAcceptance:
         data_token = DataToken("test_table", "raw")
         with Sqlite3Database(conn_conf) as db:
             db.insert(data_token, insert_store)
-
-            query_store = ExampleStore.link(db, data_token)
-            query_mask = query_store.b >= 2
-            actual = query_store[query_mask]
+            query_mask = ExampleStore.b >= 2
+            actual = db.query(ExampleStore, data_token, query_mask)
 
         expected = ExampleStore(
-            index=[1, 2],
+            metadata=metadata,
             a=["b", "c"],
             b=[2, 3],
             c=[False, True],
         )
-        assert_that(actual, expected)
+        assert_that(actual.equals(expected), equal_to(True))

@@ -8,7 +8,13 @@ from helpers.example_metadata import ExampleMetadata
 class TestMetadata:
     def test_to_from_dict(self) -> None:
         timestamp = datetime.now()
-        metadata = ExampleMetadata("a", 1, 0.123, False, timestamp)
+        metadata = ExampleMetadata(
+            test_str="test",
+            test_int=123,
+            test_float=0.123,
+            test_bool=True,
+            test_timestamp=datetime.now(),
+        )
         expected_dict = {
             "test_str": "a",
             "test_int": 1,

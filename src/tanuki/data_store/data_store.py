@@ -43,10 +43,15 @@ M = TypeVar("M", bound="Metadata")
 
 class DataStore:
     # Class vars
-    registered_stores: ClassVar[dict[str, Type[T]]] = {}
+    _registered_stores: ClassVar[dict[str, dict[int, Type[T]]]] = {}
+
+    @classmethod
+    def store_type(cls, store_class: str, store_version: int) -> Optional[Type[DataStore]]:
+        return cls._registered_stores.get(store_class, {}).get(store_version)
 
     type_factory: ClassVar[StorableTypeFactory]
     version: ClassVar[int]
+    metadata: ClassVar[Type[M]]
     columns: ClassVar[list[ColumnAlias]]
     indices: ClassVar[list[IndexAlias]]
 
@@ -62,12 +67,13 @@ class DataStore:
         cls: Type[T], version: int = 1, register: bool = True
     ) -> None:
         super(DataStore, cls).__init_subclass__()
-        if register and cls.__name__ in DataStore.registered_stores:
+        if register and DataStore.store_type(cls.__name__, version) is not None:
             raise TypeError(
-                f"Duplicate DataStores found {cls} vs {DataStore.registered_stores[cls.__name__]}"
+                f"Duplicate DataStore version found for {cls.__name__} version {version}"
             )
         cls.type_factory = StorableTypeFactory(list(cls.__mro__), cls.__annotations__)
         cls.version = version
+        cls.metadata = cls.type_factory.metadata
         cls.columns = []
         cls.indices = []
         for name, col in cls._parse_columns().items():
@@ -77,10 +83,15 @@ class DataStore:
             cls.indices.append(index)
             setattr(cls, name, index)
         if register:
-            DataStore.registered_stores[cls.__name__] = cls
+            if cls.__name__ is not DataStore._registered_stores:
+                DataStore._registered_stores[cls.__name__] = {}
+            DataStore._registered_stores[cls.__name__][version] = cls
 
     def __init__(
-        self: T, metadata: Optional[M] = None, index: Optional[Iterable] = None, **column_data: dict[str, list]
+        self: T,
+        metadata: Optional[M] = None,
+        index: Optional[Iterable] = None,
+        **column_data: dict[str, list],
     ) -> None:
         self.metadata = metadata
         if len(column_data) > 0:
@@ -114,18 +125,23 @@ class DataStore:
 
     @classmethod
     def from_rows(
-        cls: Type[T], data_rows: list[tuple], columns: Optional[list[str]] = None
+        cls: Type[T],
+        data_rows: list[tuple],
+        columns: Optional[list[str]] = None,
+        metadata: Optional[M] = None,
     ) -> T:
         if columns is None:
             columns = list(cls._parse_columns().keys())
         else:
             columns = [str(col) for col in columns]
         data = DataFrame.from_records(data_rows, columns=columns)
-        return cls.from_backend(PandasBackend(data))
+        return cls.from_backend(PandasBackend(data), metadata)
 
     @classmethod
-    def from_pandas(cls: Type[T], data: Union[Series, DataFrame]) -> T:
-        return cls.from_backend(PandasBackend(data))
+    def from_pandas(
+        cls: Type[T], data: Union[Series, DataFrame], metadata: Optional[M] = None
+    ) -> T:
+        return cls.from_backend(PandasBackend(data), metadata)
 
     def to_pandas(self: T) -> DataFrame:
         return self._data_backend.to_pandas()
@@ -151,8 +167,14 @@ class DataStore:
         return self.from_backend(self._data_backend.load())
 
     @classmethod
-    def from_backend(cls: Type[T], data_backend: B, validate: bool = True) -> T:
+    def from_backend(
+        cls: Type[T],
+        data_backend: B,
+        metadata: Optional[M] = None,
+        validate: bool = True,
+    ) -> T:
         instance = cls()
+        instance.metadata = metadata
         instance._data_backend = data_backend
         if validate:
             instance._validate_data_frame()
@@ -191,7 +213,7 @@ class DataStore:
             col_data = self._data_backend[name]
             data_dtype = Column.infer_dtype(name, col_data)
             # TODO: Run in batch
-            if data_dtype != col.dtype:
+            if data_dtype is not type(None) and data_dtype != col.dtype:
                 try:
                     cast_column = col(name, col_data)
                     self._data_backend[name] = cast_column._data_backend
@@ -246,6 +268,7 @@ class DataStore:
         return (
             other.__class__.__name__ == self.__class__.__name__
             and self._data_backend.equals(oc._data_backend)
+            and self.metadata == oc.metadata
         )
 
     def _get_external_backend(self: T, other: Any) -> None:
@@ -292,7 +315,7 @@ class DataStore:
 
     def iterrows(self: T) -> Generator[tuple[int, T], None, None]:
         for i, row in self._data_backend.iterrows():
-            yield (i, self.from_backend(row))
+            yield (i, self.from_backend(row, self.metadata))
 
     def itertuples(self: T, ignore_index: bool = False) -> Generator[tuple]:
         return self._data_backend.itertuples(ignore_index=ignore_index)
@@ -319,7 +342,7 @@ class DataStore:
         return self._data_backend.getmask(mask)
 
     def query(self: T, query: Optional[Query] = None) -> T:
-        return self.from_backend(self._data_backend.query(query))
+        return self.from_backend(self._data_backend.query(query), self.metadata)
 
     def __getitem__(
         self: T, item: Union[ColumnAlias, list[ColumnAlias], list[bool], Query]
@@ -345,7 +368,7 @@ class DataStore:
             raise RuntimeError(f"Unknown get item request: {item}")
 
         if issubclass(type(result), DataBackend):
-            result = self.from_backend(result)
+            result = self.from_backend(result, self.metadata)
         return result
 
     def __getattr__(self: T, name: str) -> Any:
@@ -355,20 +378,23 @@ class DataStore:
             )
 
     def set_index(self: T, index: Union[Index, IndexAlias]) -> T:
-        return self.from_backend(self._data_backend.set_index(index))
+        return self.from_backend(self._data_backend.set_index(index), self.metadata)
 
     def reset_index(self: T) -> T:
-        return self.from_backend(self._data_backend.reset_index())
+        return self.from_backend(self._data_backend.reset_index(), self.metadata)
 
     def append(self: T, new_store: T, ignore_index: bool = False) -> T:
         return self.from_backend(
             self._data_backend.append(
                 new_store._data_backend, ignore_index=ignore_index
-            )
+            ),
+            self.metadata,
         )
 
     def drop(self: T, indices: list[int]) -> T:
-        return self.from_backend(self._data_backend.drop_indices(indices))
+        return self.from_backend(
+            self._data_backend.drop_indices(indices), self.metadata
+        )
 
     @classmethod
     def concat(cls: T, all_data_stores: list[T], ignore_index: bool = False) -> T:
@@ -379,7 +405,8 @@ class DataStore:
         backend_sample: B = all_data_stores[0]._data_backend
         all_backends = [store._data_backend for store in all_data_stores]
         return cls.from_backend(
-            backend_sample.concat(all_backends, ignore_index=ignore_index)
+            backend_sample.concat(all_backends, ignore_index=ignore_index),
+            all_data_stores[0].metadata,
         )
 
     @classmethod
@@ -418,11 +445,11 @@ class DataStore:
                 self._row_data[key].append(value)
             return self
 
-        def build(self) -> T:
+        def build(self, metadata: Optional[M] = None) -> T:
             if len(self._column_data) > 0:
-                return self._store_class(**self._column_data)
+                return self._store_class(**self._column_data, metadata=metadata)
             else:
-                return self._store_class(**self._row_data)
+                return self._store_class(**self._row_data, metadata=metadata)
 
     class _ILocIndexer(Generic[T]):
         _data_store: T
@@ -432,7 +459,7 @@ class DataStore:
 
         def __getitem__(self, item: Union[int, list, slice]) -> T:
             return self._data_store.from_backend(
-                self._data_store._data_backend.iloc[item]
+                self._data_store._data_backend.iloc[item], self._data_store.metadata
             )
 
     class _LocIndexer(Generic[T]):
@@ -443,5 +470,5 @@ class DataStore:
 
         def __getitem__(self, item: Union[Any, list, slice]) -> T:
             return self._data_store.from_backend(
-                self._data_store._data_backend.loc[item]
+                self._data_store._data_backend.loc[item], self._data_store.metadata
             )

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, cast, Optional, Type, TypeVar, Union
+from typing import Any, cast, Optional, Type, TYPE_CHECKING, TypeVar
 
 from tanuki.data_store.column_alias import ColumnAlias
 from tanuki.data_store.data_type import DataType
+from tanuki.data_store.metadata import Metadata
 from tanuki.data_store.query import Query
 
 from .adapter.database_adapter import DatabaseAdapter
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     from tanuki.data_store.data_store import DataStore
 
 T = TypeVar("T", bound="DataStore")
+M = TypeVar("M", bound="Metadata")
 
 class Database:
     _db_adapter: DatabaseAdapter
@@ -27,12 +29,12 @@ class Database:
 
     def table_columns(self, data_token: DataToken) -> list[str]:
         with self._db_adapter:
-            col_ids = self._registrar.store_class(data_token).columns
+            col_ids = self._registrar.store_type(data_token).columns
             return [str(col_id) for col_id in col_ids]
 
     def table_dtypes(self, data_token: DataToken) -> dict[str, DataType]:
         with self._db_adapter:
-            store_class = self._registrar.store_class(data_token)
+            store_class = self._registrar.store_type(data_token)
             return {column.name: column.dtype for column in store_class.columns}
 
     def has_table(self, data_token: DataToken) -> bool:
@@ -67,8 +69,14 @@ class Database:
                 raise MissingTableError(data_token)
             columns = [str(col) for col in columns] if columns is not None else None
             table_data = self._db_adapter.query(data_token, query, columns)
-            store_class: Type[T] = self._registrar.store_class(data_token)
-            store = store_class.from_rows(table_data, columns=columns)
+            store_class: Type[T] = self._registrar.store_type(data_token)
+            metadata_class: Type[M] = self._registrar.metadata_class(data_token)
+
+            metadata: Optional[M] = None
+            if metadata_class is not None:
+                metadata = self._db_adapter.get_group_table_metadata(data_token, metadata_class)
+
+            store = store_class.from_rows(table_data, columns=columns, metadata=metadata)
             return cast(store_type, store)
 
     def insert(

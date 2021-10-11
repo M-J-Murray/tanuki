@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from io import UnsupportedOperation
-from typing import TYPE_CHECKING, Optional, Type, TypeVar
+from typing import Optional, Type, TYPE_CHECKING, TypeVar
 
+from tanuki.data_store.metadata import Metadata
 from tanuki.data_store.query import Query
 from tanuki.database.adapter.database_adapter import DatabaseAdapter
 from tanuki.database.data_token import DataToken
@@ -10,17 +11,19 @@ from tanuki.database.data_token import DataToken
 from .db_exceptions import DatabaseCorruptionError, MissingGroupError, MissingTableError
 from .reference_tables import (
     IndexReference,
+    MetadataDefinition,
+    MetadataReference,
     PROTECTED_GROUP,
     StoreDefinition,
     StoreReference,
     TableReference,
 )
 
-
 if TYPE_CHECKING:
     from tanuki.data_store.data_store import DataStore
 
 T = TypeVar("T", bound="DataStore")
+M = TypeVar("M", bound=Metadata)
 
 
 class DatabaseRegistrar:
@@ -38,22 +41,45 @@ class DatabaseRegistrar:
 
     def _has_reference_tables(self):
         with self._db_adapter:
-            return self._db_adapter.has_group_table(
-                TableReference.data_token
-            ) and self._db_adapter.has_group_table(StoreReference.data_token)
+            return (
+                self._db_adapter.has_group_table(TableReference.data_token)
+                and self._db_adapter.has_group_table(MetadataReference.data_token)
+                and self._db_adapter.has_group_table(StoreReference.data_token)
+                and self._db_adapter.has_group_table(IndexReference.data_token)
+            )
 
     def _setup_reference_tables(self):
         with self._db_adapter:
             if not self._db_adapter.has_group(PROTECTED_GROUP):
                 self._db_adapter.create_group(PROTECTED_GROUP)
-            self._db_adapter.create_group_table(TableReference.data_token, TableReference)
-            self._db_adapter.create_group_table(StoreReference.data_token, StoreReference)
-            self._db_adapter.create_group_table(IndexReference.data_token, IndexReference)
-            self._register_table(TableReference.data_token, TableReference, protected=True)
-            self._register_table(StoreReference.data_token, StoreReference, protected=True)
-            self._register_table(IndexReference.data_token, IndexReference, protected=True)
+            self._db_adapter.create_group_table(
+                TableReference.data_token, TableReference
+            )
+            self._db_adapter.create_group_table(
+                MetadataReference.data_token, MetadataReference
+            )
+            self._db_adapter.create_group_table(
+                StoreReference.data_token, StoreReference
+            )
+            self._db_adapter.create_group_table(
+                IndexReference.data_token, IndexReference
+            )
+            self._register_table(
+                TableReference.data_token, TableReference, protected=True
+            )
+            self._register_table(
+                MetadataReference.data_token, MetadataReference, protected=True
+            )
+            self._register_table(
+                StoreReference.data_token, StoreReference, protected=True
+            )
+            self._register_table(
+                IndexReference.data_token, IndexReference, protected=True
+            )
             self._register_store_class(StoreDefinition)
+            self._register_store_class(MetadataDefinition)
             self._register_store_class(TableReference)
+            self._register_store_class(MetadataReference)
             self._register_store_class(StoreReference)
             self._register_store_class(IndexReference)
 
@@ -61,6 +87,8 @@ class DatabaseRegistrar:
         with self._db_adapter:
             if not self._db_adapter.has_group_table(TableReference.data_token):
                 raise DatabaseCorruptionError("TableReference table is missing")
+            if not self._db_adapter.has_group_table(MetadataReference.data_token):
+                raise DatabaseCorruptionError("Metadata table is missing")
             if not self._db_adapter.has_group_table(StoreReference.data_token):
                 raise DatabaseCorruptionError("StoreReference table is missing")
             if not self._db_adapter.has_group_table(IndexReference.data_token):
@@ -75,8 +103,10 @@ class DatabaseRegistrar:
                     if not self._db_adapter.has_group_table(data_token):
                         raise MissingTableError(data_token)
 
-                    store_type, store_version = self._table_store_type_version(data_token)
-                    token_version = self._definition_reference_version(
+                    store_type, store_version = self._table_store_type_version(
+                        data_token
+                    )
+                    token_version = self._store_definition_reference_version(
                         store_type, store_version
                     )
                     store_definition = self._store_definition(*token_version)
@@ -85,7 +115,7 @@ class DatabaseRegistrar:
                             f"{data_token} data store type reference empty"
                         )
 
-                    type_class = store_definition._store_class(store_type, store_version)
+                    type_class = store_definition._store_type(store_type, store_version)
                     if not issubclass(type_class, DataStore):
                         raise DatabaseCorruptionError(
                             f"Received invalid data store class for {data_token}"
@@ -124,6 +154,8 @@ class DatabaseRegistrar:
             self._db_adapter.create_group_table(data_token, store_class)
             self._create_table_indices(data_token, store_class)
             self._register_table(data_token, store_class, protected)
+            if store_class.metadata is not None:
+                self._register_metadata_class(store_class.metadata)
             self._register_store_class(store_class)
 
     def _create_table_indices(
@@ -229,12 +261,16 @@ class DatabaseRegistrar:
 
     def _table_references(self, criteria: Optional[Query] = None) -> TableReference:
         with self._db_adapter:
-            table_rows = self._db_adapter.query(TableReference.data_token, query=criteria)
+            table_rows = self._db_adapter.query(
+                TableReference.data_token, query=criteria
+            )
             return TableReference.from_rows(table_rows)
 
     def _store_references(self, criteria: Optional[Query] = None) -> StoreReference:
         with self._db_adapter:
-            table_rows = self._db_adapter.query(StoreReference.data_token, query=criteria)
+            table_rows = self._db_adapter.query(
+                StoreReference.data_token, query=criteria
+            )
             return StoreReference.from_rows(table_rows)
 
     def list_tables(self) -> list[DataToken]:
@@ -281,8 +317,63 @@ class DatabaseRegistrar:
     ) -> None:
         with self._db_adapter:
             if not self._is_table_registered(data_token):
-                reference = TableReference.create_row(data_token, store_class, protected)
+                reference = TableReference.create_row(
+                    data_token, store_class, protected
+                )
                 self._db_adapter.insert(TableReference.data_token, reference)
+
+    def _metadata_references(
+        self, criteria: Optional[Query] = None
+    ) -> MetadataReference:
+        with self._db_adapter:
+            table_rows = self._db_adapter.query(
+                MetadataReference.data_token, query=criteria
+            )
+            return MetadataReference.from_rows(table_rows)
+
+    def _has_metadata_type(self, metadata_name: str, metadata_version: int):
+        with self._db_adapter:
+            type_versions = self._metadata_references().metadata_versions()
+            return (
+                metadata_name in type_versions
+                and metadata_version in type_versions[metadata_name]
+            )
+
+    def _register_metadata_class(self, metadata_class: Type[M]) -> None:
+        with self._db_adapter:
+            if not self._has_metadata_type(
+                metadata_class.__name__, metadata_class.version
+            ):
+                reference = MetadataReference.create_row(metadata_class)
+                self._db_adapter.insert(MetadataReference.data_token, reference)
+                reference_token = MetadataDefinition.data_token(metadata_class)
+                self.create_table(reference_token, MetadataDefinition, protected=True)
+                self._db_adapter.insert(
+                    reference_token, MetadataDefinition.from_type(metadata_class)
+                )
+
+    def _table_metadata_type_version(self, data_token: DataToken) -> tuple[str, int]:
+        with self._db_adapter:
+            if not self._db_adapter.has_group_table(TableReference.data_token):
+                raise DatabaseCorruptionError("TableReference table is missing")
+            else:
+                columns = [
+                    str(TableReference.metadata_type),
+                    str(TableReference.metadata_version),
+                ]
+                table_rows = self._db_adapter.query(
+                    TableReference.data_token,
+                    (TableReference.table_name == data_token.table_name)
+                    & (TableReference.data_group == data_token.data_group),
+                    columns,
+                )
+                if len(table_rows) == 0:
+                    raise MissingTableError(data_token)
+                if len(table_rows) > 1:
+                    raise DatabaseCorruptionError(
+                        f"Duplicate table references found for {data_token}"
+                    )
+                return table_rows[0]
 
     def _register_store_class(self, store_class: Type[T]) -> None:
         with self._db_adapter:
@@ -359,10 +450,41 @@ class DatabaseRegistrar:
         with self._db_adapter:
             type_versions = self._store_references().store_versions()
             return (
-                store_name in type_versions and store_version in type_versions[store_name]
+                store_name in type_versions
+                and store_version in type_versions[store_name]
             )
 
-    def _definition_reference_version(
+    def _metadata_definition_reference_version(
+        self, metadata_type: str, metadata_version: int
+    ) -> tuple[DataToken, int]:
+        with self._db_adapter:
+            if not self._db_adapter.has_group_table(MetadataReference.data_token):
+                raise DatabaseCorruptionError("MetadataReference table is missing")
+            else:
+                columns = [
+                    str(MetadataReference.definition_reference),
+                    str(MetadataReference.definition_version),
+                ]
+                table_rows = self._db_adapter.query(
+                    MetadataReference.data_token,
+                    (MetadataReference.metadata_type == metadata_type)
+                    & (MetadataReference.metadata_version == metadata_version),
+                    columns,
+                )
+                if len(table_rows) == 0:
+                    raise DatabaseCorruptionError(
+                        f"Data metadata definition {metadata_type} V{metadata_version} missing from MetadataReference"
+                    )
+                if len(table_rows) > 1:
+                    raise DatabaseCorruptionError(
+                        f"Duplicate data metadata references found for {metadata_type} V{metadata_version}"
+                    )
+                return (
+                    DataToken(table_rows[0][0], PROTECTED_GROUP),
+                    table_rows[0][1],
+                )
+
+    def _store_definition_reference_version(
         self, store_type: str, store_version: int
     ) -> tuple[DataToken, int]:
         with self._db_adapter:
@@ -392,6 +514,20 @@ class DatabaseRegistrar:
                     table_rows[0][1],
                 )
 
+    def _metadata_definition(
+        self, reference_token: DataToken, definition_version: int
+    ) -> MetadataDefinition:
+        with self._db_adapter:
+            if not self._db_adapter.has_group_table(reference_token):
+                raise DatabaseCorruptionError(f"{reference_token} table is missing")
+            else:
+                if definition_version > 1:
+                    raise UnsupportedOperation(
+                        f"Cannot deserialise data metadata type for version {definition_version}"
+                    )
+                def_rows = self._db_adapter.query(reference_token)
+                return MetadataDefinition.from_rows(def_rows)
+
     def _store_definition(
         self, reference_token: DataToken, definition_version: int
     ) -> StoreDefinition:
@@ -406,27 +542,54 @@ class DatabaseRegistrar:
                 def_rows = self._db_adapter.query(reference_token)
                 return StoreDefinition.from_rows(def_rows)
 
-    def store_class(self, data_token: DataToken) -> Type[T]:
+    def metadata_class(self, data_token: DataToken) -> Optional[M]:
+        with self._db_adapter:
+            metaclass_type, metaclass_version = self._table_metadata_type_version(
+                data_token
+            )
+            if metaclass_type is None or metaclass_version is None:
+                return
+
+            (
+                reference_token,
+                definition_version,
+            ) = self._metadata_definition_reference_version(
+                metaclass_type, metaclass_version
+            )
+            metadata_definition = self._metadata_definition(
+                reference_token, definition_version
+            )
+
+            return metadata_definition._metadata_type(metaclass_type, metaclass_version)
+
+    def store_type(self, data_token: DataToken) -> Type[T]:
         with self._db_adapter:
             store_type, store_version = self._table_store_type_version(data_token)
-            reference_token, definition_version = self._definition_reference_version(
-                store_type, store_version
+            (
+                reference_token,
+                definition_version,
+            ) = self._store_definition_reference_version(store_type, store_version)
+            store_definition = self._store_definition(
+                reference_token, definition_version
             )
-            store_definition = self._store_definition(reference_token, definition_version)
 
             # Query indices
             store_indices = (IndexReference.store_type == store_type) & (
                 IndexReference.store_version == store_version
             )
-            index_rows = self._db_adapter.query(IndexReference.data_token, store_indices)
+            index_rows = self._db_adapter.query(
+                IndexReference.data_token, store_indices
+            )
             index_reference = IndexReference.from_rows(index_rows)
             index_columns = index_reference.index_columns()
 
-            return store_definition._store_class(store_type, store_version, index_columns)
+            return store_definition._store_type(
+                store_type, store_version, index_columns
+            )
 
     def _drop_store_type(self, store_type: str, store_version: int) -> None:
         with self._db_adapter:
-            reference_token, _ = self._definition_reference_version(
+            reference_token, _ = self._store_definition_reference_version(
                 store_type, store_version
             )
             self._db_adapter.drop_group_table(reference_token)

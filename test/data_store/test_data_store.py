@@ -1,4 +1,6 @@
 from __future__ import annotations
+from datetime import datetime
+from helpers.example_metadata import ExampleMetadata
 
 from helpers.example_store import ExampleStore
 from typing import cast
@@ -19,11 +21,24 @@ class TestDataStore:
 
     @classmethod
     def setup_class(cls) -> None:
+        cls.metadata = ExampleMetadata(
+            test_str="test",
+            test_int=123,
+            test_float=0.123,
+            test_bool=True,
+            test_timestamp=datetime.now(),
+        )
         cls.test_store = ExampleStore(
-            a=["a", "b", "c"], b=[1, 2, 3], c=[True, False, True]
+            metadata=cls.metadata,
+            a=["a", "b", "c"], 
+            b=[1, 2, 3], 
+            c=[True, False, True]
         )
         cls.test_row0 = ExampleStore(a="a", b=1, c=True, index=0)
         cls.test_row2 = ExampleStore(a="c", b=3, c=True, index=2)
+
+    def test_metadata(self) -> None:
+        assert_that(self.test_store.metadata, equal_to(self.metadata))
 
     def test_get_column_by_name(self) -> None:
         assert_that(self.test_store.a.tolist(), equal_to(["a", "b", "c"]))
@@ -289,6 +304,13 @@ class TestDataStore:
     def test_equals(self) -> None:
         assert_that(self.test_store.equals(self.test_store), is_(True))
         assert_that(self.test_store.equals(1), is_(False))
+
+        test = ExampleStore(
+            a=["a", "b", "c"], 
+            b=[1, 2, 3], 
+            c=[True, False, True]
+        )
+        assert_that(self.test_store.equals(test), is_(False))
 
     def test_eq(self) -> None:
         result = self.test_store == self.test_store

@@ -256,7 +256,7 @@ class TestDatabaseRegistrar:
             ),
         }
         for store_name, def_token in store_name_def_tokens.items():
-            store_token, def_version = self.registrar._definition_reference_version(
+            store_token, def_version = self.registrar._store_definition_reference_version(
                 store_name, 1
             )
             assert_that(store_token, equal_to(def_token))
@@ -279,7 +279,7 @@ class TestDatabaseRegistrar:
 
     def test_store_class(self) -> None:
         self.registrar.create_table(ExampleStore.data_token, ExampleStore)
-        store_class = self.registrar.store_class(ExampleStore.data_token)
+        store_class = self.registrar.store_type(ExampleStore.data_token)
         actual = store_class(a=1, b=2, c=3)
         expected = ExampleStore(a=1, b=2, c=3)
         assert_that(actual.equals(expected), is_(True))

@@ -85,7 +85,7 @@ class PandasBackend(DataBackend):
         return {col: DataType(dtype) for col, dtype in self._data.dtypes.items()}
 
     def cast_columns(self, column_dtypes: dict[str, type]) -> PandasBackend:
-        return PandasBackend(self._data.astype(column_dtypes))
+        return PandasBackend(self._data.astype(column_dtypes, errors="ignore"))
 
     def to_dict(self) -> dict[str, any]:
         return self._data.to_dict("list")

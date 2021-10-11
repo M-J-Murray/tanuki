@@ -3,21 +3,27 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import shutil
+from sqlite3 import Connection
 
+from tanuki.database.adapter.statement.sql_statement import SqlStatement
 from tanuki.database.data_token import DataToken
 
 
 class UncommittedChange:
-    def rollback(self):
+    def rollback(self, connection: Connection):
         NotImplementedError()
 
 
 @dataclass
 class UncommittedGroupCreate(UncommittedChange):
+    data_group: DataToken
     data_group_path: Path
 
-    def rollback(self):
+    def rollback(self, connection: Connection):
         self.data_group_path.unlink()
+
+        statement = SqlStatement().DETACH_DATABASE(self.data_group).compile()
+        connection.execute(statement)
 
 
 @dataclass
@@ -33,18 +39,21 @@ class UncommittedGroupDelete(UncommittedChange):
         checkpoint_path = self.checkpoint_path()
         shutil.copyfile(str(self.data_group_path), str(checkpoint_path))
 
-    def rollback(self):
+    def rollback(self, connection: Connection):
         self.data_group_path.unlink()
         checkpoint_path = self.checkpoint_path()
         shutil.copyfile(str(checkpoint_path), str(self.data_group_path))
         checkpoint_path.unlink()
+
+        statement = SqlStatement().ATTACH_DATABASE(self.data_group).compile()
+        connection.execute(statement)
 
 
 @dataclass
 class UncommittedMetadataCreate(UncommittedChange):
     metadata_path: Path
 
-    def rollback(self):
+    def rollback(self, connection: Connection):
         self.metadata_path.unlink()
 
 
@@ -66,7 +75,7 @@ class UncommittedMetadataDelete(UncommittedChange):
         checkpoint_path.parent.mkdir(exist_ok=True)
         shutil.copyfile(self.metadata_path, checkpoint_path)
 
-    def rollback(self):
+    def rollback(self, connection: Connection):
         self.metadata_path.unlink()
         checkpoint_path = self.checkpoint_path()
         shutil.copyfile(str(checkpoint_path), str(self.metadata_path))
@@ -86,7 +95,7 @@ class UncommittedMetadataGroupDelete(UncommittedChange):
         checkpoint_group_path = self.checkpoint_group_path()
         shutil.copytree(str(self.metadata_group_path), str(checkpoint_group_path))
 
-    def rollback(self):
+    def rollback(self, connection: Connection):
         shutil.rmtree(str(self.metadata_group_path))
         checkpoint_group_path = self.checkpoint_group_path()
         shutil.copytree(str(checkpoint_group_path), str(self.metadata_group_path))

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Type, TypeVar
+from typing import Optional, Type, TYPE_CHECKING, TypeVar
 
 from tanuki.data_store.index.index import Index
+from tanuki.data_store.metadata import Metadata
 from tanuki.data_store.query import Query
 from tanuki.database.data_token import DataToken
 
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from tanuki.data_store.data_store import DataStore
 
 T = TypeVar("T", bound="DataStore")
-
+M = TypeVar("M", bound=Metadata)
 
 class DatabaseAdapter:
     def __enter__(self):
@@ -45,6 +46,9 @@ class DatabaseAdapter:
         raise NotImplementedError()
 
     def has_index(self: DatabaseAdapter, data_token: DataToken, index: Index) -> bool:
+        return NotImplementedError()
+
+    def get_group_table_metadata(self, data_token: DataToken, metadata_type: Type[M]) -> Optional[M]:
         return NotImplementedError()
 
     def query(
