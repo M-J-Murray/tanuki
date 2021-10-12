@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import get_args, get_origin, Union
-
 from tanuki.data_store.data_type import (
     Array,
     Boolean,
@@ -59,3 +57,14 @@ class Sqlite3Type:
             raise ValueError(f"Sqlite3 does not support type {data_type}")
         return cls._mappings[data_type]
 
+    @staticmethod
+    def type_mappings(column_types: dict[str, DataType]) -> dict[str, type]:
+        result = {}
+        for col, dtype in column_types.items():
+            result[col] = {
+                Sqlite3Type.TEXT: String.pdtype(),
+                Sqlite3Type.INTEGER: Int64.pdtype(),
+                Sqlite3Type.REAL: Float64.pdtype(),
+                Sqlite3Type.BLOB: Bytes.pdtype(),
+            }[Sqlite3Type(dtype)]
+        return result

@@ -155,7 +155,7 @@ class DataStore:
 
     @property
     def dtypes(self: T) -> dict[str, DataType]:
-        return self._data_backend.dtypes
+        return {col.name: col.dtype for col in self.columns}
 
     def is_link(self: T) -> bool:
         return self._data_backend.is_link()

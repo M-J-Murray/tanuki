@@ -14,6 +14,7 @@ from tanuki.data_store.query import AndGroupQuery, ColumnQuery, EqualsQuery, Que
 from tanuki.database.adapter.database_adapter import DatabaseAdapter
 from tanuki.database.adapter.database_schema import DatabaseSchema
 from tanuki.database.adapter.query.sql_query_compiler import SqlQueryCompiler
+from tanuki.database.adapter.sqlite3.sqlite3_type import Sqlite3Type
 from tanuki.database.adapter.statement.sql_statement import SqlStatement
 from tanuki.database.connection_config import ConnectionConfig
 from tanuki.database.data_token import DataToken
@@ -331,6 +332,9 @@ class Sqlite3Adapter(DatabaseAdapter):
             columns = [str(col) for col in data_store.columns]
             values = ["?" for _ in range(len(data_store.columns))]
 
+            mappings = Sqlite3Type.type_mappings(data_store.dtypes)
+            mapped_store = data_store.to_pandas().astype(mappings, errors="ignore")
+
             statement = (
                 SqlStatement()
                 .INSERT_INTO(data_token, *columns)
@@ -340,7 +344,7 @@ class Sqlite3Adapter(DatabaseAdapter):
 
             self._connection.executemany(
                 statement,
-                data_store.itertuples(ignore_index=True),
+                mapped_store.itertuples(index=False),
             )
         except Exception as e:
             raise DatabaseAdapterError("_insert_from_values failed", e)

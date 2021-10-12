@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from helpers.example_metadata import ExampleMetadata
 from tanuki.data_store.column import Column
 from tanuki.data_store.data_store import DataStore
@@ -14,6 +16,7 @@ class ExampleStore(DataStore):
     a: Column[str]
     b: Column[int]
     c: Column[bool]
+    d: Column[datetime]
 
     a_index: Index[a]
     ab_index: Index[a, b]

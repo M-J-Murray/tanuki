@@ -39,11 +39,13 @@ class TestAcceptance:
             test_bool=True,
             test_timestamp=datetime.now(),
         )
+        now = datetime.now()
         insert_store = ExampleStore(
             metadata=metadata,
             a=["a", "b", "c"],
             b=[1, 2, 3],
             c=[True, False, True],
+            d=[now, now, now],
         )
         conn_conf = self.sql_db.connection_config()
 
@@ -58,5 +60,6 @@ class TestAcceptance:
             a=["b", "c"],
             b=[2, 3],
             c=[False, True],
+            d=[now, now]
         )
         assert_that(actual.equals(expected), equal_to(True))
