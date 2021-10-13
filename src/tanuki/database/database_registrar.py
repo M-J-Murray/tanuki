@@ -19,8 +19,7 @@ from .reference_tables import (
     TableReference,
 )
 
-if TYPE_CHECKING:
-    from tanuki.data_store.data_store import DataStore
+from tanuki.data_store.data_store import DataStore
 
 T = TypeVar("T", bound="DataStore")
 M = TypeVar("M", bound=Metadata)
@@ -115,7 +114,9 @@ class DatabaseRegistrar:
                             f"{data_token} data store type reference empty"
                         )
 
-                    type_class = store_definition._store_type(store_type, store_version)
+                    index_columns = self._store_index_columns(store_type, store_version)
+
+                    type_class = store_definition._store_type(store_type, store_version, index_columns)
                     if not issubclass(type_class, DataStore):
                         raise DatabaseCorruptionError(
                             f"Received invalid data store class for {data_token}"
@@ -562,6 +563,18 @@ class DatabaseRegistrar:
 
             return metadata_definition._metadata_type(metaclass_type, metaclass_version)
 
+    def _store_index_columns(self, store_type: str, store_version: int) -> dict[str, list[str]]:
+        with self._db_adapter:
+            # Query indices
+            store_indices = (IndexReference.store_type == store_type) & (
+                IndexReference.store_version == store_version
+            )
+            index_rows = self._db_adapter.query(
+                IndexReference.data_token, store_indices
+            )
+            index_reference = IndexReference.from_rows(index_rows)
+            return index_reference.index_columns()
+
     def store_type(self, data_token: DataToken) -> Type[T]:
         with self._db_adapter:
             store_type, store_version = self._table_store_type_version(data_token)
@@ -573,15 +586,7 @@ class DatabaseRegistrar:
                 reference_token, definition_version
             )
 
-            # Query indices
-            store_indices = (IndexReference.store_type == store_type) & (
-                IndexReference.store_version == store_version
-            )
-            index_rows = self._db_adapter.query(
-                IndexReference.data_token, store_indices
-            )
-            index_reference = IndexReference.from_rows(index_rows)
-            index_columns = index_reference.index_columns()
+            index_columns = self._store_index_columns(store_type, store_version)
 
             return store_definition._store_type(
                 store_type, store_version, index_columns

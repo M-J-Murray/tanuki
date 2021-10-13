@@ -52,6 +52,8 @@ class TestAcceptance:
         data_token = DataToken("test_table", "raw")
         with Sqlite3Database(conn_conf) as db:
             db.insert(data_token, insert_store)
+
+        with Sqlite3Database(conn_conf) as db:
             query_mask = ExampleStore.b >= 2
             actual = db.query(ExampleStore, data_token, query_mask)
 
