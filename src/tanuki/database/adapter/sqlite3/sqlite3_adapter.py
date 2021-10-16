@@ -65,7 +65,9 @@ class Sqlite3Adapter(DatabaseAdapter):
         self._connection = sqlite3.connect(
             f"{self._conn_config.uri()}/{PROTECTED_GROUP}.db", isolation_level=None
         )
-        self._connection.execute("BEGIN")
+
+        self._connection.execute("pragma journal_mode=wal2")
+        self._connection.execute("BEGIN CONCURRENT")
         with self:
             for db_path in Path(self._conn_config.uri()).glob("*.db"):
                 self.create_group(db_path.stem)
