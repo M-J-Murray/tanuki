@@ -79,6 +79,11 @@ class Database:
             store = store_class.from_rows(table_data, columns=columns, metadata=metadata)
             return cast(store_type, store)
 
+    def create_table(self: Database, data_token: DataToken, store_type: Type[T]) -> None:
+        with self._db_adapter:
+            if not self._registrar.has_table(data_token):
+                self._registrar.create_table(data_token, store_type)
+
     def insert(
         self: Database, data_token: DataToken, data_store: T
     ) -> None:

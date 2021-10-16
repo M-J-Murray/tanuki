@@ -195,7 +195,7 @@ class DataStore:
         unmatched_columns = set(backend_columns) - columns.keys()
         if len(unmatched_columns) > 0:
             raise KeyError(
-                f"Data backend contains columns which are not supported by {self.__class__.__name__}"
+                f"Data backend contains columns which are not supported by {self.__class__.__name__}:\n{unmatched_columns}"
             )
 
         active_columns = {}
